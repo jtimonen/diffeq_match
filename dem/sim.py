@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scdyn.utils.plotting import draw_plot
-
+from .plotting import draw_plot
 
 def latent_sim(idx: int = 1, N1: int = 300, N2: int = 200, sigma: float = 0.15):
     """Simulate latent data.

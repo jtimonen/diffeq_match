@@ -1,0 +1,13 @@
+*.idea
+*.DS_Store
+*.swp
+*.pth
+*cache/
+*pytest_cache/
+*.coverage
+*__pycache__
+build/
+dist/
+cov_html/
+*.egg-info
+

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from .networks import TanhNetTwoLayer
 
 
 def create_ode(D: int, n_hidden: int = 32):
@@ -89,87 +90,3 @@ class ODE(nn.Module):
         f = self.f(0.0, zt)
         f = f.detach().cpu().numpy()
         return f
-
-
-class TanhNetOneLayer(nn.Module):
-    """A fully connected network with one hidden layer. Uses Tanh activation
-    functions and batch normalization.
-    """
-
-    def __init__(
-        self,
-        n_input: int,
-        n_output: int,
-        n_hidden: int = 64,
-        eps=0.001,
-        momentum=0.01,
-        multiplier=1.0,
-    ):
-        super().__init__()
-        self.n_input = n_input
-        self.n_input = n_output
-        self.hidden_dim = n_hidden
-        self.multiplier = multiplier
-        self.layer1 = nn.Sequential(
-            nn.Linear(n_input, n_hidden),
-            nn.BatchNorm1d(num_features=n_hidden, eps=eps, momentum=momentum),
-            nn.Tanh(),
-            nn.Dropout(0.1),
-        )
-        self.layer2 = nn.Linear(n_hidden, n_output)
-        self.log_magnitude = torch.nn.Parameter(
-            -0.5 + 0.1 * torch.randn(1), requires_grad=True
-        )
-
-    def forward(self, t: torch.Tensor, z: torch.Tensor):
-        """Pass the tensor z through the network."""
-        h = self.layer1(z)
-        h = self.layer2(h)
-        f = self.layer3(h)
-        f = nn.functional.normalize(f, dim=1)
-        return torch.exp(self.log_magnitude) * f
-
-
-class TanhNetTwoLayer(nn.Module):
-    """A fully connected network with two hidden layers. Uses Tanh activation
-    functions and batch normalization.
-    """
-
-    def __init__(
-        self,
-        n_input: int,
-        n_output: int,
-        n_hidden: int = 64,
-        eps=0.001,
-        momentum=0.01,
-        multiplier=1.0,
-    ):
-        super().__init__()
-        self.n_input = n_input
-        self.n_input = n_output
-        self.hidden_dim = n_hidden
-        self.multiplier = multiplier
-        self.layer1 = nn.Sequential(
-            nn.Linear(n_input, n_hidden),
-            nn.BatchNorm1d(num_features=n_hidden, eps=eps, momentum=momentum),
-            nn.Tanh(),
-            nn.Dropout(0.1),
-        )
-        self.layer2 = nn.Sequential(
-            nn.Linear(n_hidden, n_hidden),
-            nn.BatchNorm1d(num_features=n_hidden, eps=eps, momentum=momentum),
-            nn.Tanh(),
-            nn.Dropout(0.1),
-        )
-        self.layer3 = nn.Linear(n_hidden, n_output)
-        self.log_magnitude = torch.nn.Parameter(
-            -0.5 + 0.1 * torch.randn(1), requires_grad=True
-        )
-
-    def forward(self, t: torch.Tensor, z: torch.Tensor):
-        """Pass the tensor z through the network."""
-        h = self.layer1(z)
-        h = self.layer2(h)
-        f = self.layer3(h)
-        f = nn.functional.normalize(f, dim=1)
-        return torch.exp(self.log_magnitude) * f

@@ -1,69 +1,8 @@
 import torch
 import torch.nn as nn
-from scdyn.utils.utils import assert_numeric
 
 
-class Encoder(nn.Module):
-    """Encodes normalized expression data to latent cell representations. Has one hidden layer.
-    Includes batch normalization, ReLU activation and Dropout.
-
-    :param G: input dimension (number of genes)
-    :type G: int
-    :param D: output dimension
-    :type D: int
-    :param H: hidden layer dimension
-    :type H: int
-    :param var_lower_bound: lower bound for the returned variance
-    :type var_lower_bound: float
-    :param eps: *eps* parameter of *BatchNorm1d*
-    :type eps: float
-    :param momentum: *momentum* parameter of *BatchNorm1d*
-    :type momentum: float
-    :param p_dropout: proportion parameter of *torch.nn.Dropout*
-    :type p_dropout: float
-    """
-
-    def __init__(
-        self,
-        G: int,
-        D: int,
-        H: int,
-        var_lower_bound: float = 1e-4,
-        eps=0.001,
-        momentum=0.01,
-        p_dropout=0.1,
-    ):
-        super().__init__()
-        self.G = G
-        self.D = D
-        self.H = H
-        self.layer1 = nn.Sequential(
-            nn.Linear(G, H),
-            nn.BatchNorm1d(num_features=H, eps=eps, momentum=momentum),
-            nn.ReLU(),
-            nn.Dropout(p_dropout),
-        )
-        self.layer2_mean = nn.Linear(H, D)
-        self.layer2_logvar = nn.Linear(H, D)
-        assert var_lower_bound >= 0, "variance lower bound must be non-negative"
-        self.var_lower_bound = var_lower_bound
-
-    def forward(self, x: torch.Tensor):
-        """Pass the tensor x through the network.
-
-        :param x: tensor with shape *[n_minibatch, G]*
-        :type x: torch.Tensor
-        :return: Means and variances, both with shape *[n_minibatch, D]*.
-        :rtype: *(torch.Tensor, torch.Tensor, torch.Tensor)*
-        """
-        # Encode
-        h = self.layer1(x)
-        z_mu = self.layer2_mean(h)
-        z_s2 = torch.exp(self.layer2_logvar(h)) + self.var_lower_bound
-        return z_mu, z_s2
-
-
-class TimeEncoder(nn.Module):
+class PseudotimeEncoder(nn.Module):
     """Encodes latent representation to latent time."""
 
     def __init__(self, D: int, H: int = 128, eps=0.001, momentum=0.01, p_dropout=0.1):
@@ -90,95 +29,6 @@ class TimeEncoder(nn.Module):
         zt = torch.from_numpy(z).float()
         tt = self.forward(zt)
         return tt.detach().cpu().numpy()
-
-
-class TimeEncoderSU(nn.Module):
-    """Encodes latent representation to latent time."""
-
-    def __init__(self, G: int, H: int = 128, eps=0.001, momentum=0.01, p_dropout=0.1):
-        super().__init__()
-        self.G = G
-        self.H = H
-        self.layer1 = nn.Sequential(
-            nn.Linear(2 * G, H),
-            nn.BatchNorm1d(num_features=H, eps=eps, momentum=momentum),
-            nn.ReLU(),
-            nn.Dropout(p_dropout),
-        )
-        self.layer2_mean = nn.Linear(H, 1)
-        self.layer2_logvar = nn.Linear(H, 1)
-        self.var_lower_bound = 1e-4
-
-    def forward(self, xs: torch.Tensor, xu: torch.Tensor):
-        """Forward pass."""
-        x = torch.cat((xs, xu), dim=1)
-        h = self.layer1(x)
-        t_mu = self.layer2_mean(h)
-        t_s2 = torch.exp(self.layer2_logvar(h)) + self.var_lower_bound
-        return t_mu, t_s2
-
-
-class Decoder(nn.Module):
-    """Decodes latent representations to positive values.
-    Has one hidden layer and uses ReLU activation.
-
-    :param G: input dimension
-    :type G: int
-    :param D: output dimension
-    :type D: int
-    :param H: hidden layer dimension
-    :type H: int
-    """
-
-    def __init__(self, D: int, G: int, H: int = 24):
-        super().__init__()
-        self.D = D
-        self.G = G
-        self.H = H
-        self.layer1 = nn.Sequential(nn.Linear(D, H), nn.ReLU())
-        self.layer2 = nn.Linear(H, G)
-
-    def forward(self, z: torch.Tensor):
-        """Pass the tensor *z* through the network.
-
-        :param z: tensor with shape *[n_minibatch, D]*
-        :type z: torch.Tensor
-        :return: data reconstruction, with shape *[n_minibatch, G]*
-        :rtype: torch.Tensor
-        """
-        px = self.layer1(z)
-        out = torch.exp(self.layer2(px))
-        assert_numeric(out)
-        return out
-
-
-class LinearDecoder(nn.Module):
-    """Decodes latent representations to positive values.
-
-    :param G: input dimension
-    :type G: int
-    :param D: output dimension
-    :type D: int
-    """
-
-    def __init__(self, D: int, G: int):
-        super().__init__()
-        self.D = D
-        self.G = G
-        self.layer1 = nn.Linear(D, G)
-
-    def forward(self, z: torch.Tensor):
-        """Pass the tensor *z* through the network.
-
-        :param z: tensor with shape *[n_minibatch, D]*
-        :type z: torch.Tensor
-        :return: data reconstruction, with shape *[n_minibatch, G]*
-        :rtype: torch.Tensor
-        """
-        px = self.layer1(z)
-        out = torch.exp(px)
-        assert_numeric(out)
-        return out
 
 
 class Discriminator(nn.Module):
@@ -220,3 +70,87 @@ class Discriminator(nn.Module):
         h = self.layer3(h)
         logp = self.layer4(h)
         return logp
+
+
+class TanhNetOneLayer(nn.Module):
+    """A fully connected network with one hidden layer. Uses Tanh activation
+    functions and batch normalization.
+    """
+
+    def __init__(
+        self,
+        n_input: int,
+        n_output: int,
+        n_hidden: int = 64,
+        eps=0.001,
+        momentum=0.01,
+        multiplier=1.0,
+    ):
+        super().__init__()
+        self.n_input = n_input
+        self.n_input = n_output
+        self.hidden_dim = n_hidden
+        self.multiplier = multiplier
+        self.layer1 = nn.Sequential(
+            nn.Linear(n_input, n_hidden),
+            nn.BatchNorm1d(num_features=n_hidden, eps=eps, momentum=momentum),
+            nn.Tanh(),
+            nn.Dropout(0.1),
+        )
+        self.layer2 = nn.Linear(n_hidden, n_output)
+        self.log_magnitude = torch.nn.Parameter(
+            -0.5 + 0.1 * torch.randn(1), requires_grad=True
+        )
+
+    def forward(self, t: torch.Tensor, z: torch.Tensor):
+        """Pass the tensor z through the network."""
+        h = self.layer1(z)
+        h = self.layer2(h)
+        f = self.layer3(h)
+        f = nn.functional.normalize(f, dim=1)
+        return torch.exp(self.log_magnitude) * f
+
+
+class TanhNetTwoLayer(nn.Module):
+    """A fully connected network with two hidden layers. Uses Tanh activation
+    functions and batch normalization.
+    """
+
+    def __init__(
+        self,
+        n_input: int,
+        n_output: int,
+        n_hidden: int = 64,
+        eps=0.001,
+        momentum=0.01,
+        multiplier=1.0,
+    ):
+        super().__init__()
+        self.n_input = n_input
+        self.n_input = n_output
+        self.hidden_dim = n_hidden
+        self.multiplier = multiplier
+        self.layer1 = nn.Sequential(
+            nn.Linear(n_input, n_hidden),
+            nn.BatchNorm1d(num_features=n_hidden, eps=eps, momentum=momentum),
+            nn.Tanh(),
+            nn.Dropout(0.1),
+        )
+        self.layer2 = nn.Sequential(
+            nn.Linear(n_hidden, n_hidden),
+            nn.BatchNorm1d(num_features=n_hidden, eps=eps, momentum=momentum),
+            nn.Tanh(),
+            nn.Dropout(0.1),
+        )
+        self.layer3 = nn.Linear(n_hidden, n_output)
+        self.log_magnitude = torch.nn.Parameter(
+            -0.5 + 0.1 * torch.randn(1), requires_grad=True
+        )
+
+    def forward(self, t: torch.Tensor, z: torch.Tensor):
+        """Pass the tensor z through the network."""
+        h = self.layer1(z)
+        h = self.layer2(h)
+        f = self.layer3(h)
+        f = nn.functional.normalize(f, dim=1)
+        return torch.exp(self.log_magnitude) * f

@@ -54,7 +54,7 @@ class MMD(nn.Module):
     def __init__(self, D: int, ell2=None):
         super().__init__()
         if ell2 is None:
-            ell2 = 0.1
+            ell2 = 0.5 * D
         self.ell2 = ell2
         self.D = D
 

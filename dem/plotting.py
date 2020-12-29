@@ -15,7 +15,16 @@ def draw_plot(save_name, save_dir=".", **kwargs):
 
 
 def plot_match(
-    z_data, zf, z0, loss: float, u=None, v=None, save_name=None, save_dir=".", **kwargs
+    z_data,
+    zf,
+    z0,
+    loss: float,
+    u=None,
+    v=None,
+    z_traj=None,
+    save_name=None,
+    save_dir=".",
+    **kwargs
 ):
     loss = np.round(loss, 5)
     plt.scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
@@ -23,6 +32,10 @@ def plot_match(
     plt.scatter(z0[0], z0[1], c="k", marker="x")
     if u is not None:
         plt.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.3)
+    if z_traj is not None:
+        L = z_traj.shape[0]
+        for j in range(0, L):
+            plt.plot(z_traj[j, :, 0], z_traj[j, :, 1], "k", alpha=0.3)
     plt.title("loss = " + str(loss))
     plt.legend(["data", "matched"])
     x_min = np.min(z_data) * 1.5

@@ -10,4 +10,5 @@ build/
 dist/
 cov_html/
 *.egg-info
+lightning_logs/
 

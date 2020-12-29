@@ -1,26 +1,28 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from .ode import ODE
-from .networks import PseudotimeEncoder
+from torchdyn.models import NeuralDE
+import pytorch_lightning as pl
+
 from .math import MMD
 from .plotting import plot_match
-from .training import train_model
+from .training import Learner
 from .data import create_dataloader, MyDataset
 from .utils import create_grid_around
+from .networks import TanhNetOneLayer
 
 
 class GenODE(nn.Module):
     """Main model module."""
 
-    def __init__(self, D: int, z0, H_ode: int = 64):
+    def __init__(self, D: int, z0, n_hidden: int = 32):
         super().__init__()
-        self.ode = ODE(D, H_ode)
-        self.D = self.ode.D
+        f = TanhNetOneLayer(D, D, n_hidden)
+        self.ode = NeuralDE(f, sensitivity="adjoint", solver="dopri5")
+        self.D = D
+        assert len(z0) == D, "length of z0 must be equal to D!"
         self.z0_mean = torch.tensor(z0).float()
-        self.z0_sigma = 0.05 * torch.ones(2).float()
-        # nn.Parameter(0.1 * torch.ones(2), requires_grad=True)
-        self.mmd = MMD(D=D, ell2=1.0)
+        self.z0_sigma = 0.1 * torch.ones(D).float()
 
     def draw_z0t0(self, N: int):
         rand_e = torch.randn((N, self.D)).float()
@@ -29,34 +31,40 @@ class GenODE(nn.Module):
         t = torch.from_numpy(t).float()
         return z0, t
 
-    def forward(self, z0, t, n_steps: int = 30):
-        zf = self.ode(z0, t, n_steps)
+    def forward(self, n_draws: int = 300):
+        z0, t = self.model.draw_z0t0(N=n_draws)
+        print("z0:", z0.shape)
+        print("t", t.shape)
+        zf = self.ode(z0, t)
         return zf
 
     def loss(self, z_data, zf):
         loss = self.mmd(zf, z_data)
         return loss
 
-    def plot_forward(self, z_data, zf):
+    def plot_forward(self, z_data, zf, z_traj=None):
         loss = self.mmd(zf, z_data).item()
         zf = zf.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
         z0 = self.z0_mean
         u_grid = create_grid_around(z_data, 16)
         v_grid = self.ode.f_numpy(u_grid)
-        plot_match(z_data, zf, z0, loss, u_grid, v_grid)
+        plot_match(z_data, zf, z0, loss, u_grid, v_grid, z_traj)
 
     def fit(
         self,
         z_data,
         n_draws=None,
         batch_size=None,
-        n_epochs: int = 100,
+        n_epochs: int = 10,
         lr: float = 0.005,
+        mmd_ell: float = 1.0,
     ):
-        optim = torch.optim.Adam(params=self.parameters(), lr=lr)
+        mmd = MMD(D=self.D, ell2=mmd_ell)
         ds = MyDataset(z_data)
-        dl = create_dataloader(ds, batch_size)
-        if n_draws is None:
-            n_draws = len(ds)
-        train_model(self, dl, optim, n_draws, n_epochs)
+        dataloader = create_dataloader(ds, batch_size)
+        min_epochs = n_epochs
+        max_epochs = 2 * n_epochs
+        learner = Learner(self, dataloader, mmd, lr, n_draws)
+        trainer = pl.Trainer(min_epochs=min_epochs, max_epochs=max_epochs)
+        trainer.fit(learner)

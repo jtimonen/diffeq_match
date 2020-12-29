@@ -4,22 +4,13 @@ import numpy as np
 from .networks import TanhNetTwoLayer
 
 
-def create_ode(D: int, n_hidden: int = 32):
-    """Create ODE."""
-    f = TanhNetTwoLayer(D, D, n_hidden=n_hidden)
-    return ODE(f)
-
-
 class ODE(nn.Module):
-    """An ordinary differential equation module.
+    """An ordinary differential equation module."""
 
-    :param f: A module defining the right-hand side of the ODE system.
-    :type f: nn.Module
-    """
-
-    def __init__(self, f: nn.Module):
+    def __init__(self, D: int, H: int = 32):
         super().__init__()
-        self.f = f
+        self.f = TanhNetTwoLayer(D, D, n_hidden=H)
+        self.D = D
 
     def forward(
         self,

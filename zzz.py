@@ -15,11 +15,10 @@ z, t = sim(1, N)
 a = GenODE(2, [-1.0, 0.0])
 # print(a)
 
-z0, t = a.draw_z0t0(N=N)
-
-zf = a(z0, t)
-
 zz = torch.from_numpy(z).float()
-mmd = a.loss(zz, zf)
 
+a.fit(zz, lr=0.01)
+
+z0, t = a.draw_z0t0(N=N)
+zf = a(z0, t)
 a.plot_forward(zz, zf)

@@ -5,6 +5,7 @@ from .ode import ODE
 from .networks import PseudotimeEncoder
 from .math import MMD
 from .plotting import plot_match
+from .training import train_model
 
 
 class GenODE(nn.Module):
@@ -39,4 +40,9 @@ class GenODE(nn.Module):
         loss = self.mmd(zf, z_data).item()
         zf = zf.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
-        plot_match(z_data, zf, loss)
+        z0 = self.z0_mean
+        plot_match(z_data, zf, z0, loss)
+
+    def fit(self, z_data, n_epochs: int = 100, lr: float = 0.001):
+        optim = torch.optim.Adam(params=self.parameters(), lr=lr)
+        train_model(self, z_data, optim, n_epochs)

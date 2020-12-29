@@ -14,13 +14,15 @@ def draw_plot(save_name, save_dir=".", **kwargs):
         plt.close()
 
 
-def plot_match(z_data, zf, mmd: float, save_name=None, save_dir=".", **kwargs):
-    plt.scatter(z_data[:, 0], z_data[:, 1])
-    plt.scatter(zf[:, 0], zf[:, 1])
-    plt.title("loss = " + str(mmd))
+def plot_match(z_data, zf, z0, loss: float, save_name=None, save_dir=".", **kwargs):
+    loss = np.round(loss, 5)
+    plt.scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
+    plt.scatter(zf[:, 0], zf[:, 1], alpha=0.7)
+    plt.scatter(z0[0], z0[1], c="k", marker="x")
+    plt.title("loss = " + str(loss))
     plt.legend(["data", "matched"])
-    xmin = np.min(z_data) * 1.2
-    xmax = np.max(z_data) * 1.2
-    plt.xlim(xmin, xmax)
-    plt.ylim(xmin, xmax)
+    x_min = np.min(z_data) * 1.5
+    x_max = np.max(z_data) * 1.5
+    plt.xlim(x_min, x_max)
+    plt.ylim(x_min, x_max)
     draw_plot(save_name, save_dir, **kwargs)

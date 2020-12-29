@@ -74,7 +74,7 @@ class MMD(nn.Module):
         kyy = gaussian_kernel(y, y, self.ell2)
         kxy = gaussian_kernel(x, y, self.ell2)
         mmd = kxx.mean() + kyy.mean() - 2 * kxy.mean()
-        return mmd
+        return mmd.sqrt()
 
     def forward_numpy(self, x, y):
         """Forward pass but with numpy arrays as input."""

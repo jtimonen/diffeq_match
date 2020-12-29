@@ -4,6 +4,7 @@ import numpy as np
 from .ode import ODE
 from .networks import PseudotimeEncoder
 from .math import MMD
+from .plotting import plot_match
 
 
 class GenODE(nn.Module):
@@ -33,3 +34,9 @@ class GenODE(nn.Module):
     def loss(self, z_data, zf):
         loss = self.mmd(zf, z_data)
         return loss
+
+    def plot_forward(self, z_data, zf):
+        loss = self.mmd(zf, z_data).item()
+        zf = zf.detach().cpu().numpy()
+        z_data = z_data.detach().cpu().numpy()
+        plot_match(z_data, zf, loss)

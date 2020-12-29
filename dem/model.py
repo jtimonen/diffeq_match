@@ -6,14 +6,15 @@ from .networks import PseudotimeEncoder
 from .math import MMD
 from .plotting import plot_match
 from .training import train_model
+from .data import create_dataloader, MyDataset
+from .utils import create_grid_around
 
 
 class GenODE(nn.Module):
     """Main model module."""
 
-    def __init__(self, D: int, z0, H_pte: int = 32, H_ode: int = 32):
+    def __init__(self, D: int, z0, H_ode: int = 64):
         super().__init__()
-        self.pte = PseudotimeEncoder(D, H_pte)
         self.ode = ODE(D, H_ode)
         self.D = self.ode.D
         self.z0_mean = torch.tensor(z0).float()
@@ -41,8 +42,21 @@ class GenODE(nn.Module):
         zf = zf.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
         z0 = self.z0_mean
-        plot_match(z_data, zf, z0, loss)
+        u_grid = create_grid_around(z_data, 16)
+        v_grid = self.ode.f_numpy(u_grid)
+        plot_match(z_data, zf, z0, loss, u_grid, v_grid)
 
-    def fit(self, z_data, n_epochs: int = 100, lr: float = 0.001):
+    def fit(
+        self,
+        z_data,
+        n_draws=None,
+        batch_size=None,
+        n_epochs: int = 100,
+        lr: float = 0.005,
+    ):
         optim = torch.optim.Adam(params=self.parameters(), lr=lr)
-        train_model(self, z_data, optim, n_epochs)
+        ds = MyDataset(z_data)
+        dl = create_dataloader(ds, batch_size)
+        if n_draws is None:
+            n_draws = len(ds)
+        train_model(self, dl, optim, n_draws, n_epochs)

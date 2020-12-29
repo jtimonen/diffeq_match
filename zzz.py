@@ -2,8 +2,8 @@ from dem.sim import sim, plot_sim
 from dem.model import GenODE
 import torch
 
-N = 100
-z, t = sim(1, N)
+N = 1000
+z, t = sim(2, N)
 # plot_sim(z, t)
 
 # z, t = sim(2, N)
@@ -17,7 +17,7 @@ a = GenODE(2, [-1.0, 0.0])
 
 zz = torch.from_numpy(z).float()
 
-a.fit(zz, lr=0.01)
+a.fit(zz, lr=0.005, n_epochs=300, n_draws=100)
 
 z0, t = a.draw_z0t0(N=N)
 zf = a(z0, t)

@@ -17,4 +17,3 @@ model = GenODE(2, [-1.0, 0.0])
 zz = torch.from_numpy(z_data).float()
 
 model.fit(zz, n_epochs=200, n_draws=30)
-

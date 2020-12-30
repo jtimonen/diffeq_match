@@ -12,4 +12,3 @@ print(model)
 zz = torch.from_numpy(z_data).float()
 
 model.fit(zz, n_epochs=400, n_draws=30)
-

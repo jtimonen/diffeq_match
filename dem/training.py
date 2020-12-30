@@ -12,18 +12,21 @@ class Learner(pl.LightningModule):
         mmd: nn.Module,
         n_draws: int,
         n_timepoints: int,
-        lr: float = 0.005,
-        out_dir=None
+        lr: float,
+        lr_decay: float,
+        out_dir=None,
+        draw_freq=10,
     ):
         super().__init__()
         self.model = model
         self.dataloader = dataloader
         self.lr = lr
+        self.lr_decay = lr_decay
         self.mmd = mmd
         self.n_draws = n_draws
         self.n_timepoints = n_timepoints
         self.out_dir = out_dir
-        self.draw_freq = 10
+        self.draw_freq = draw_freq
 
     def forward(self, n_draws: int):
         return self.model(n_draws)
@@ -43,16 +46,14 @@ class Learner(pl.LightningModule):
         return loss
 
     def visualize(self, z_data, loss, idx_epoch):
-        self.model.visualize(z_data,
-                             self.n_draws,
-                             self.n_timepoints,
-                             loss,
-                             self.out_dir,
-                             idx_epoch)
+        self.model.visualize(
+            z_data, self.n_draws, self.n_timepoints, loss, self.out_dir, idx_epoch
+        )
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        return torch.optim.Adam(
+            self.model.parameters(), lr=self.lr, weight_decay=self.lr_decay
+        )
 
     def train_dataloader(self):
         return self.dataloader
-

@@ -23,8 +23,7 @@ class GenODE(nn.Module):
         self.D = D
         assert len(z0) == D, "length of z0 must be equal to D!"
         self.z0_mean = torch.tensor(z0).float()
-        self.z0_log_sigma = torch.nn.Parameter(torch.tensor([-2.5]),
-                                               requires_grad=True)
+        self.z0_log_sigma = torch.nn.Parameter(torch.tensor([-2.5]), requires_grad=True)
 
     @property
     def z0_sigma(self):
@@ -45,18 +44,27 @@ class GenODE(nn.Module):
         return z0, t_span, z
 
     @torch.no_grad()
-    def visualize(self, z_data, n_draws: int, n_timepoints: int,
-                  loss=None, out_dir=".", idx_epoch=None):
+    def visualize(
+        self,
+        z_data,
+        n_draws: int,
+        n_timepoints: int,
+        loss=None,
+        out_dir=".",
+        idx_epoch=None,
+    ):
         z_traj = self.traj_numpy(n_draws, n_timepoints)
         z_data = z_data.detach().cpu().numpy()
         z0 = self.z0_mean
         u_grid = create_grid_around(z_data, 16)
         v_grid = self.defunc_numpy(u_grid)
-        epoch_str = '{0:04}'.format(idx_epoch)
-        title = "epoch " + epoch_str + ', MMD = ' + str(round(loss, 5))
+        epoch_str = "{0:04}".format(idx_epoch)
+        loss_str = "{:.5f}".format(loss)
+        title = "epoch " + epoch_str + ", MMD = " + loss_str
         fn = "fig_" + epoch_str + ".png"
-        plot_match(z_data, z0, title, u_grid, v_grid, z_traj,
-                   save_dir=out_dir, save_name=fn)
+        plot_match(
+            z_data, z0, title, u_grid, v_grid, z_traj, save_dir=out_dir, save_name=fn
+        )
 
     def defunc_numpy(self, z):
         z = torch.from_numpy(z).float()
@@ -75,9 +83,11 @@ class GenODE(nn.Module):
         batch_size=None,
         n_epochs: int = 100,
         lr: float = 0.005,
+        lr_decay: float = 1e-5,
         mmd_ell: float = 1.0,
         num_workers: int = 0,
-        out_dir="train_output"
+        out_dir="train_output",
+        plot_freq=10,
     ):
         mmd = MMD(D=self.D, ell2=mmd_ell)
         ds = MyDataset(z_data)
@@ -86,6 +96,16 @@ class GenODE(nn.Module):
         max_epochs = n_epochs
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
-        learner = Learner(self, dataloader, mmd, n_draws, n_timepoints, lr, out_dir)
+        learner = Learner(
+            self,
+            dataloader,
+            mmd,
+            n_draws,
+            n_timepoints,
+            lr,
+            lr_decay,
+            out_dir,
+            plot_freq,
+        )
         trainer = pl.Trainer(min_epochs=min_epochs, max_epochs=max_epochs)
         trainer.fit(learner)

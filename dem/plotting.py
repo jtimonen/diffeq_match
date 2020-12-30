@@ -29,11 +29,11 @@ def plot_match(
     if u is not None:
         plt.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
     plt.scatter(z_data[:, 0], z_data[:, 1], alpha=0.75)
-    plt.scatter(z0[0], z0[1], c="k", marker="x")
     if z_traj is not None:
         L = z_traj.shape[1]
         for j in range(0, L):
-            plt.plot(z_traj[:, j, 0], z_traj[:, j, 1], '.-', c="orange", alpha=0.7)
+            plt.plot(z_traj[:, j, 0], z_traj[:, j, 1], ".-", c="orange", alpha=0.7)
+    plt.scatter(z_traj[0, :, 0], z_traj[0, :, 1], c="k", marker="x", alpha=0.7)
     plt.title(title)
     x_min = np.min(z_data) * 1.5
     x_max = np.max(z_data) * 1.5

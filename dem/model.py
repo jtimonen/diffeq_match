@@ -23,7 +23,7 @@ class GenODE(nn.Module):
         self.D = D
         assert len(z0) == D, "length of z0 must be equal to D!"
         self.z0_mean = torch.tensor(z0).float()
-        self.z0_log_sigma = torch.nn.Parameter(torch.tensor([-2.5]), requires_grad=True)
+        self.z0_log_sigma = torch.log(torch.tensor([0.05]))
 
     @property
     def z0_sigma(self):

@@ -12,4 +12,6 @@ cov_html/
 *.egg-info
 *lightning_logs/
 *train_output/
+*.gif
+*.png
 

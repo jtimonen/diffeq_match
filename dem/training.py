@@ -34,7 +34,7 @@ class Learner(pl.LightningModule):
         z = reshape_traj(z_traj)
         loss = self.mmd(z_data, z)
         self.log("train_loss", loss)
-        self.log("log_sigma", self.model.z0_log_sigma)
+        self.log("z0_log_sigma", self.model.z0_log_sigma)
         idx_epoch = self.current_epoch
 
         if idx_epoch % self.draw_freq == 0:

@@ -17,7 +17,7 @@ def draw_plot(save_name, save_dir=".", **kwargs):
 def plot_match(
     z_data,
     z0,
-    loss: float,
+    title,
     u=None,
     v=None,
     z_traj=None,
@@ -25,7 +25,6 @@ def plot_match(
     save_dir=".",
     **kwargs
 ):
-    loss = np.round(loss, 5)
     plt.figure(figsize=(7, 7))
     if u is not None:
         plt.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
@@ -34,8 +33,8 @@ def plot_match(
     if z_traj is not None:
         L = z_traj.shape[1]
         for j in range(0, L):
-            plt.plot(z_traj[:, j, 0], z_traj[:, j, 1], '.-', c="orange", alpha=0.3)
-    plt.title("loss = " + str(loss))
+            plt.plot(z_traj[:, j, 0], z_traj[:, j, 1], '.-', c="orange", alpha=0.7)
+    plt.title(title)
     x_min = np.min(z_data) * 1.5
     x_max = np.max(z_data) * 1.5
     plt.xlim(x_min, x_max)

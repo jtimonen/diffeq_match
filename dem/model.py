@@ -23,7 +23,7 @@ class GenODE(nn.Module):
         self.D = D
         assert len(z0) == D, "length of z0 must be equal to D!"
         self.z0_mean = torch.tensor(z0).float()
-        self.z0_log_sigma = torch.nn.Parameter(torch.tensor([-4.0]),
+        self.z0_log_sigma = torch.nn.Parameter(torch.tensor([-2.5]),
                                                requires_grad=True)
 
     @property
@@ -52,9 +52,10 @@ class GenODE(nn.Module):
         z0 = self.z0_mean
         u_grid = create_grid_around(z_data, 16)
         v_grid = self.defunc_numpy(u_grid)
-        loss = round(loss, 5)
-        fn = "fig_" + '{0:04}'.format(idx_epoch) + ".png"
-        plot_match(z_data, z0, loss, u_grid, v_grid, z_traj,
+        epoch_str = '{0:04}'.format(idx_epoch)
+        title = "epoch " + epoch_str + ', MMD = ' + str(round(loss, 5))
+        fn = "fig_" + epoch_str + ".png"
+        plot_match(z_data, z0, title, u_grid, v_grid, z_traj,
                    save_dir=out_dir, save_name=fn)
 
     def defunc_numpy(self, z):

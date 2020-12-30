@@ -31,40 +31,52 @@ class GenODE(nn.Module):
         t = torch.from_numpy(t).float()
         return z0, t
 
-    def forward(self, n_draws: int = 300):
-        z0, t = self.model.draw_z0t0(N=n_draws)
-        print("z0:", z0.shape)
-        print("t", t.shape)
-        zf = self.ode(z0, t)
-        return zf
+    def forward(self, n_draws: int, n_timepoints: int):
+        z0, _ = self.draw_z0t0(N=n_draws)
+        t_span = torch.linspace(0, 1, n_timepoints).float()
+        z = self.ode.trajectory(z0, t_span)
+        return z0, t_span, z
 
-    def loss(self, z_data, zf):
-        loss = self.mmd(zf, z_data)
-        return loss
-
-    def plot_forward(self, z_data, zf, z_traj=None):
-        loss = self.mmd(zf, z_data).item()
-        zf = zf.detach().cpu().numpy()
+    @torch.no_grad()
+    def visualize(self, z_data, n_draws: int, n_timepoints: int,
+                  loss=None, out_dir=".", idx_epoch=None):
+        z_traj = self.traj_numpy(n_draws, n_timepoints)
+        zf = z_traj[z_traj.shape[0]-1, :, :]
         z_data = z_data.detach().cpu().numpy()
         z0 = self.z0_mean
         u_grid = create_grid_around(z_data, 16)
-        v_grid = self.ode.f_numpy(u_grid)
-        plot_match(z_data, zf, z0, loss, u_grid, v_grid, z_traj)
+        v_grid = self.defunc_numpy(u_grid)
+        loss = round(loss, 5)
+        fn = "fig_" + '{0:04}'.format(idx_epoch) + ".png"
+        plot_match(z_data, zf, z0, loss, u_grid, v_grid, z_traj,
+                   save_dir=out_dir, save_name=fn)
+
+    def defunc_numpy(self, z):
+        z = torch.from_numpy(z).float()
+        f = self.ode.defunc(0, z).cpu().detach().numpy()
+        return f
+
+    def traj_numpy(self, n_draws: int, n_timepoints: int):
+        _, _, z_traj = self.forward(n_draws, n_timepoints)
+        return z_traj.cpu().detach().numpy()
 
     def fit(
         self,
         z_data,
-        n_draws=None,
+        n_draws=100,
+        n_timepoints=30,
         batch_size=None,
-        n_epochs: int = 10,
+        n_epochs: int = 100,
         lr: float = 0.005,
         mmd_ell: float = 1.0,
+        num_workers: int = 0,
+        out_dir="train_output"
     ):
         mmd = MMD(D=self.D, ell2=mmd_ell)
         ds = MyDataset(z_data)
-        dataloader = create_dataloader(ds, batch_size)
+        dataloader = create_dataloader(ds, batch_size, num_workers)
         min_epochs = n_epochs
         max_epochs = 2 * n_epochs
-        learner = Learner(self, dataloader, mmd, lr, n_draws)
+        learner = Learner(self, dataloader, mmd, n_draws, n_timepoints, lr, out_dir)
         trainer = pl.Trainer(min_epochs=min_epochs, max_epochs=max_epochs)
         trainer.fit(learner)

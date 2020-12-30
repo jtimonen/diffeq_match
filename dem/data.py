@@ -31,12 +31,16 @@ class MyDataset(Dataset):
         return desc
 
 
-def create_dataloader(dataset: torch.utils.data.Dataset, batch_size=None):
+def create_dataloader(
+    dataset: torch.utils.data.Dataset, batch_size=None, num_workers=None
+):
     """Create a torch data loader."""
     # Split to training and validation sets
     N = len(dataset)
     if batch_size is None:
         batch_size = N
 
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    loader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+    )
     return loader

@@ -23,3 +23,10 @@ def create_grid_around(z, M: int, scaling: float = 0.1):
     xs_ = np.meshgrid(*LS)
     U_grid = np.array([x.T.flatten() for x in xs_]).T
     return U_grid
+
+
+def reshape_traj(z_traj):
+    n_timepoints = z_traj.shape[0]
+    n_samples = z_traj.shape[1]
+    n_dimensions = z_traj.shape[2]
+    return z_traj.view(n_timepoints*n_samples, n_dimensions)

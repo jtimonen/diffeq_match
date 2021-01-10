@@ -68,14 +68,14 @@ def add_noise_and_stack(z1, z2, sigma):
     return z
 
 
-def plot_sim(z: np.ndarray, t=None, save_name=None, scatter_kwargs=None, **kwargs):
+def plot_sim(z: np.ndarray, c=None, save_name=None, scatter_kwargs=None, **kwargs):
     """Plot latent simulation."""
     if scatter_kwargs is None:
         scatter_kwargs = dict()
-    if t is None:
+    if c is None:
         plt.scatter(z[:, 0], z[:, 1], **scatter_kwargs)
     else:
-        plt.scatter(z[:, 0], z[:, 1], c=t, **scatter_kwargs)
+        plt.scatter(z[:, 0], z[:, 1], c=c, **scatter_kwargs)
         plt.colorbar()
     plt.xlim(-2, 2)
     plt.ylim(-2, 2)

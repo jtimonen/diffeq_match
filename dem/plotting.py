@@ -8,8 +8,9 @@ def draw_plot(save_name, save_dir=".", **kwargs):
     if save_name is None:
         plt.show()
     else:
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
         save_path = os.path.join(save_dir, save_name)
-        # log_info("Saving figure to " + save_path)
         plt.savefig(save_path, **kwargs)
         plt.close()
 

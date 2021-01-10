@@ -1,22 +1,8 @@
-import os
 import torch
 import sys
 
 # Global variables
-_OUTPUT_DIR = os.getcwd()
 _DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
-
-def set_outdir(path):
-    """Set a global parent directory where output will be saved.
-    :param path: path to directory
-    :type path: str
-    """
-    path = os.path.abspath(path)
-    global _OUTPUT_DIR
-    _OUTPUT_DIR = path
-    if not os.path.isdir(path):
-        os.mkdir(path)
 
 
 def set_device(device_name):
@@ -29,15 +15,6 @@ def set_device(device_name):
     dev = torch.device(device_name)
     global _DEVICE
     _DEVICE = dev
-
-
-def get_outdir():
-    """Get current output directory.
-    :return: path to output dir
-    :rtype: str
-    """
-    global _OUTPUT_DIR
-    return _OUTPUT_DIR
 
 
 def get_device():
@@ -67,7 +44,6 @@ def session_info_(skip_cuda: bool = False):
     msg = "Using "
     msg = msg + " python-" + ver
     msg = msg + ", torch-" + str(torch.__version__)
-    msg += "\n - output path: " + get_outdir()
     msg += "\n - device: " + str(get_device())
     if not skip_cuda:
         msg = msg + "\n" + cuda_info()

@@ -24,6 +24,7 @@ class GenODE(nn.Module):
         assert len(z0) == D, "length of z0 must be equal to D!"
         self.z0_mean = torch.tensor(z0).float()
         self.z0_log_sigma = torch.log(torch.tensor([0.05]))
+        self.outdir = os.getcwd()
 
     @property
     def z0_sigma(self):
@@ -44,13 +45,22 @@ class GenODE(nn.Module):
         return z0, t_span, z
 
     @torch.no_grad()
+    def set_outdir(self, path):
+        if not os.path.isdir(path):
+            os.mkdir(path)
+        self.outdir = path
+
+    @property
+    def fig_dir(self):
+        return os.path.join(self.outdir, "figs")
+
+    @torch.no_grad()
     def visualize(
         self,
         z_data,
         n_draws: int,
         n_timepoints: int,
         loss=None,
-        out_dir=".",
         idx_epoch=None,
     ):
         z_traj = self.traj_numpy(n_draws, n_timepoints)
@@ -62,8 +72,9 @@ class GenODE(nn.Module):
         loss_str = "{:.5f}".format(loss)
         title = "epoch " + epoch_str + ", MMD = " + loss_str
         fn = "fig_" + epoch_str + ".png"
+        fig_dir = self.fig_dir
         plot_match(
-            z_data, z0, title, u_grid, v_grid, z_traj, save_dir=out_dir, save_name=fn
+            z_data, z0, title, u_grid, v_grid, z_traj, save_dir=fig_dir, save_name=fn
         )
 
     def defunc_numpy(self, z):
@@ -86,16 +97,13 @@ class GenODE(nn.Module):
         lr_decay: float = 1e-5,
         mmd_ell: float = 1.0,
         num_workers: int = 0,
-        out_dir="train_output",
-        plot_freq=10,
+        plot_freq=0,
     ):
         mmd = MMD(D=self.D, ell2=mmd_ell)
         ds = MyDataset(z_data)
         dataloader = create_dataloader(ds, batch_size, num_workers)
         min_epochs = n_epochs
         max_epochs = n_epochs
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
         learner = Learner(
             self,
             dataloader,
@@ -104,7 +112,6 @@ class GenODE(nn.Module):
             n_timepoints,
             lr,
             lr_decay,
-            out_dir,
             plot_freq,
         )
         trainer = pl.Trainer(min_epochs=min_epochs, max_epochs=max_epochs)

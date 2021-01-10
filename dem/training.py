@@ -14,7 +14,6 @@ class Learner(pl.LightningModule):
         n_timepoints: int,
         lr: float,
         lr_decay: float,
-        out_dir=None,
         draw_freq=10,
     ):
         super().__init__()
@@ -25,7 +24,6 @@ class Learner(pl.LightningModule):
         self.mmd = mmd
         self.n_draws = n_draws
         self.n_timepoints = n_timepoints
-        self.out_dir = out_dir
         self.draw_freq = draw_freq
 
     def forward(self, n_draws: int):
@@ -39,16 +37,14 @@ class Learner(pl.LightningModule):
         self.log("train_loss", loss)
         self.log("z0_log_sigma", self.model.z0_log_sigma)
         idx_epoch = self.current_epoch
-
-        if idx_epoch % self.draw_freq == 0:
-            self.visualize(z_data, loss.item(), idx_epoch)
+        if self.draw_freq > 0:
+            if idx_epoch % self.draw_freq == 0:
+                self.visualize(z_data, loss.item(), idx_epoch)
 
         return loss
 
     def visualize(self, z_data, loss, idx_epoch):
-        self.model.visualize(
-            z_data, self.n_draws, self.n_timepoints, loss, self.out_dir, idx_epoch
-        )
+        self.model.visualize(z_data, self.n_draws, self.n_timepoints, loss, idx_epoch)
 
     def configure_optimizers(self):
         return torch.optim.Adam(

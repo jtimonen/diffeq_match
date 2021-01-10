@@ -11,4 +11,5 @@ print(model)
 
 zz = torch.from_numpy(z_data).float()
 
-model.fit(zz, n_epochs=300, n_draws=50)
+
+model.fit(zz, n_epochs=300, n_draws=50, plot_freq=10)

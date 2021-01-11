@@ -3,14 +3,15 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchdyn.models import NeuralDE
-import pytorch_lightning as pl
+from pytorch_lightning import Trainer
 
 from .math import MMD
 from .plotting import plot_match
-from .training import Learner
+from .training import MMDLearner
 from .data import create_dataloader, MyDataset
 from .utils import create_grid_around
 from .networks import TanhNetOneLayer
+from .callbacks import PrintCallback
 
 
 class GenODE(nn.Module):
@@ -45,16 +46,6 @@ class GenODE(nn.Module):
         return z0, t_span, z
 
     @torch.no_grad()
-    def set_outdir(self, path):
-        if not os.path.isdir(path):
-            os.mkdir(path)
-        self.outdir = path
-
-    @property
-    def fig_dir(self):
-        return os.path.join(self.outdir, "figs")
-
-    @torch.no_grad()
     def visualize(
         self,
         z_data,
@@ -62,7 +53,10 @@ class GenODE(nn.Module):
         n_timepoints: int,
         loss=None,
         idx_epoch=None,
+        outdir=None
     ):
+        if outdir is None:
+            outdir = os.getcwd()
         z_traj = self.traj_numpy(n_draws, n_timepoints)
         z_data = z_data.detach().cpu().numpy()
         z0 = self.z0_mean
@@ -72,7 +66,7 @@ class GenODE(nn.Module):
         loss_str = "{:.5f}".format(loss)
         title = "epoch " + epoch_str + ", MMD = " + loss_str
         fn = "fig_" + epoch_str + ".png"
-        fig_dir = self.fig_dir
+        fig_dir = os.path.join(outdir, "figs")
         plot_match(
             z_data, z0, title, u_grid, v_grid, z_traj, save_dir=fig_dir, save_name=fn
         )
@@ -86,7 +80,7 @@ class GenODE(nn.Module):
         _, _, z_traj = self.forward(n_draws, n_timepoints)
         return z_traj.cpu().detach().numpy()
 
-    def fit(
+    def fit_mmd(
         self,
         z_data,
         n_draws=100,
@@ -104,7 +98,7 @@ class GenODE(nn.Module):
         dataloader = create_dataloader(ds, batch_size, num_workers)
         min_epochs = n_epochs
         max_epochs = n_epochs
-        learner = Learner(
+        learner = MMDLearner(
             self,
             dataloader,
             mmd,
@@ -114,5 +108,8 @@ class GenODE(nn.Module):
             lr_decay,
             plot_freq,
         )
-        trainer = pl.Trainer(min_epochs=min_epochs, max_epochs=max_epochs)
+        save_path = learner.outdir
+        trainer = Trainer(min_epochs=min_epochs, max_epochs=max_epochs,
+                          default_root_dir=save_path,
+                          callbacks=[PrintCallback()])
         trainer.fit(learner)

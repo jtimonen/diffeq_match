@@ -1,10 +1,12 @@
+import os
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+
 from .utils import reshape_traj
 
 
-class Learner(pl.LightningModule):
+class MMDLearner(pl.LightningModule):
     def __init__(
         self,
         model: nn.Module,
@@ -15,6 +17,7 @@ class Learner(pl.LightningModule):
         lr: float,
         lr_decay: float,
         draw_freq=10,
+        outdir="out"
     ):
         super().__init__()
         self.model = model
@@ -25,6 +28,10 @@ class Learner(pl.LightningModule):
         self.n_draws = n_draws
         self.n_timepoints = n_timepoints
         self.draw_freq = draw_freq
+
+        if not os.path.isdir(outdir):
+            os.mkdir(outdir)
+        self.outdir = outdir
 
     def forward(self, n_draws: int):
         return self.model(n_draws)
@@ -44,7 +51,9 @@ class Learner(pl.LightningModule):
         return loss
 
     def visualize(self, z_data, loss, idx_epoch):
-        self.model.visualize(z_data, self.n_draws, self.n_timepoints, loss, idx_epoch)
+        outdir = self.outdir
+        self.model.visualize(z_data, self.n_draws, self.n_timepoints, loss, idx_epoch,
+                             outdir)
 
     def configure_optimizers(self):
         return torch.optim.Adam(

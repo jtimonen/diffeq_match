@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn.manifold import Isomap
 
 
@@ -21,3 +22,21 @@ def gdist(X, n_neighbors=5):
     isomap_kwargs = dict(n_neighbors=n_neighbors)
     embedding = isomap(X, **isomap_kwargs)
     return embedding.dist_matrix_
+
+
+def pretrain_pseudotime(z0, Z, n_neighbors=5):
+    """Create target for pseudotime for pretraining.
+    """
+    z0 = np.array(z0)
+    z0 = z0.reshape(1, -1)
+    Z = np.vstack((z0, Z))
+    gd = gdist(Z, n_neighbors)
+    N = np.shape(gd)[0]
+    return gd[0, 1:N]
+
+
+def pretrain_target(z0, Z, n_neighbors=5):
+    """Create target for pretraining.
+    """
+    pt = pretrain_pseudotime(z0, Z, n_neighbors)
+    return pt

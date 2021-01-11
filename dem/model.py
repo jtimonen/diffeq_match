@@ -11,7 +11,7 @@ from .training import MMDLearner
 from .data import create_dataloader, MyDataset
 from .utils import create_grid_around
 from .networks import TanhNetOneLayer
-from .callbacks import PrintCallback
+from .callbacks import MyCallback
 
 
 class GenODE(nn.Module):
@@ -67,6 +67,7 @@ class GenODE(nn.Module):
         title = "epoch " + epoch_str + ", MMD = " + loss_str
         fn = "fig_" + epoch_str + ".png"
         fig_dir = os.path.join(outdir, "figs")
+        print("plotting " + fn)
         plot_match(
             z_data, z0, title, u_grid, v_grid, z_traj, save_dir=fig_dir, save_name=fn
         )
@@ -111,5 +112,5 @@ class GenODE(nn.Module):
         save_path = learner.outdir
         trainer = Trainer(min_epochs=min_epochs, max_epochs=max_epochs,
                           default_root_dir=save_path,
-                          callbacks=[PrintCallback()])
+                          callbacks=[MyCallback()])
         trainer.fit(learner)

@@ -10,12 +10,14 @@ def isomap(X, **isomap_kwargs):
     return embedding
 
 
-def gdist(X, **isomap_kwargs):
+def gdist(X, n_neighbors=5):
     """Compute geodesic distances between all rows of X.
 
+    :param n_neighbors: argument for sklearn.manifold.Isomap
     :param X: Sample data, shape = (n_samples, n_features), in the form of a
         numpy array, sparse graph, precomputed tree, or NearestNeighbors object.
     :return: a distance matrix with shape = (n_samples, n_samples)
     """
+    isomap_kwargs = dict(n_neighbors=n_neighbors)
     embedding = isomap(X, **isomap_kwargs)
     return embedding.dist_matrix_

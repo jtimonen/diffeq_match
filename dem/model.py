@@ -7,10 +7,10 @@ from pytorch_lightning import Trainer
 
 from .math import MMD
 from .plotting import plot_match
-from .training import MMDLearner
+from .training import MMDLearner, GANLearner
 from .data import create_dataloader, MyDataset
 from .utils import create_grid_around
-from .networks import TanhNetOneLayer
+from .networks import TanhNetOneLayer, ReluNetTwoLayer
 from .callbacks import MyCallback
 
 
@@ -53,7 +53,7 @@ class GenODE(nn.Module):
         n_timepoints: int,
         loss=None,
         idx_epoch=None,
-        outdir=None
+        outdir=None,
     ):
         if outdir is None:
             outdir = os.getcwd()
@@ -110,7 +110,61 @@ class GenODE(nn.Module):
             plot_freq,
         )
         save_path = learner.outdir
-        trainer = Trainer(min_epochs=min_epochs, max_epochs=max_epochs,
-                          default_root_dir=save_path,
-                          callbacks=[MyCallback()])
+        trainer = Trainer(
+            min_epochs=min_epochs,
+            max_epochs=max_epochs,
+            default_root_dir=save_path,
+            callbacks=[MyCallback()],
+        )
         trainer.fit(learner)
+
+    def fit_gan(
+        self,
+        z_data,
+        n_draws=100,
+        n_timepoints=30,
+        batch_size=None,
+        n_epochs: int = 100,
+        lr: float = 0.001,
+        lr_decay: float = 1e-5,
+        disc_hidden: int = 64,
+        num_workers: int = 0,
+        plot_freq=0,
+    ):
+        disc = Discriminator(D=self.D, n_hidden=disc_hidden)
+        ds = MyDataset(z_data)
+        dataloader = create_dataloader(ds, batch_size, num_workers)
+        min_epochs = n_epochs
+        max_epochs = n_epochs
+        learner = GANLearner(
+            self,
+            dataloader,
+            disc,
+            n_draws,
+            n_timepoints,
+            lr,
+            lr_decay,
+            plot_freq,
+        )
+        save_path = learner.outdir
+        trainer = Trainer(
+            min_epochs=min_epochs,
+            max_epochs=max_epochs,
+            default_root_dir=save_path,
+            callbacks=[MyCallback()],
+        )
+        trainer.fit(learner)
+
+
+class Discriminator(nn.Module):
+    """Classifier."""
+
+    def __init__(self, D: int, n_hidden: int = 64):
+        super().__init__()
+        self.net = ReluNetTwoLayer(D, 1, n_hidden)
+        self.D = D
+
+    def forward(self, z):
+        z = self.net(z)
+        validity = torch.sigmoid(z)
+        return validity

@@ -25,8 +25,7 @@ def gdist(X, n_neighbors=5):
 
 
 def pretrain_pseudotime(z0, Z, n_neighbors=5):
-    """Create target for pseudotime for pretraining.
-    """
+    """Create target for pseudotime for pretraining."""
     z0 = np.array(z0)
     z0 = z0.reshape(1, -1)
     Z = np.vstack((z0, Z))
@@ -36,7 +35,6 @@ def pretrain_pseudotime(z0, Z, n_neighbors=5):
 
 
 def pretrain_target(z0, Z, n_neighbors=5):
-    """Create target for pretraining.
-    """
+    """Create target for pretraining."""
     pt = pretrain_pseudotime(z0, Z, n_neighbors)
     return pt

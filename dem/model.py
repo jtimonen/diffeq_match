@@ -156,4 +156,3 @@ class Discriminator(nn.Module):
         a = np.round(val)
         corr = np.sum(a == target)
         return corr / N
-

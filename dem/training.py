@@ -5,7 +5,6 @@ import torch.nn.functional as func
 import pytorch_lightning as pl
 
 from .plotting import plot_match
-from .utils import create_grid_around
 
 
 class MMDLearner(pl.LightningModule):
@@ -106,6 +105,7 @@ class GANLearner(pl.LightningModule):
             # how we can it make discriminator think it is data
             d_gen = self.disc(z_gen)
             g_loss = self.adversarial_loss(d_gen, valid)
+            self.log("g_loss", g_loss)
             return g_loss
 
         # discriminator
@@ -122,29 +122,21 @@ class GANLearner(pl.LightningModule):
             fake_loss = self.adversarial_loss(d_gen, fake)
 
             # discriminator loss is the average of these
+            self.log("real_loss", real_loss)
+            self.log("fake_loss", fake_loss)
             d_loss = (real_loss + fake_loss) / 2
+            self.log("d_loss", d_loss)
             return d_loss
         else:
             raise ValueError("optimizer_idx must be 0 or 1!")
 
     def visualize(self, z_data, loss, idx_epoch):
-        self.model.visualize(z_data, loss, idx_epoch, )
-        n_timepoints = 30
-        n_draws = 100
         outdir = self.outdir
-        z_traj = self.model.traj_numpy(n_draws, n_timepoints)
-        z_data = z_data.detach().cpu().numpy()
-        u_grid = create_grid_around(z_data, 16)
-        v_grid = self.model.defunc_numpy(u_grid)
-        epoch_str = "{0:04}".format(idx_epoch)
-        loss_str = "{:.5f}".format(loss)
-        title = "epoch " + epoch_str + ", loss = " + loss_str
-        fn = "fig_" + epoch_str + ".png"
         fig_dir = os.path.join(outdir, "figs")
-        print("plotting " + fn)
-        plot_match(
-            z_data, title, u_grid, v_grid, z_traj, save_dir=fig_dir, save_name=fn
-        )
+        z_data = z_data.detach().cpu().numpy()
+        if not os.path.isdir(fig_dir):
+            os.mkdir(fig_dir)
+        plot_match(self.model, self.disc, z_data, idx_epoch, loss, fig_dir)
 
     def configure_optimizers(self):
         lr = self.lr

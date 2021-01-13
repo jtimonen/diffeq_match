@@ -38,7 +38,7 @@ class MMDLearner(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         z_data = batch
-        _, _, z_gen = self.model(self.n_draws)
+        z_gen = self.model()
         loss = self.mmd(z_data, z_gen)
         self.log("train_loss", loss)
         self.log("z0_log_sigma", self.model.z0_log_sigma)
@@ -71,6 +71,8 @@ class GANLearner(pl.LightningModule):
         outdir="out",
     ):
         super().__init__()
+        self.N = len(dataloader.dataset)
+        self.z0 = model.draw_z0(self.N)
         self.model = model
         self.dataloader = dataloader
         self.lr = lr
@@ -91,7 +93,7 @@ class GANLearner(pl.LightningModule):
     def training_step(self, batch, batch_idx, optimizer_idx):
         z_data = batch
         N = z_data.size(0)
-        _, _, z_gen = self.model(N)
+        z_gen = self.model(self.z0)
 
         # generator
         if optimizer_idx == 0:
@@ -133,9 +135,11 @@ class GANLearner(pl.LightningModule):
         outdir = self.outdir
         fig_dir = os.path.join(outdir, "figs")
         z_data = z_data.detach().cpu().numpy()
+        z0 = self.z0
+        z0 = z0.detach().cpu().numpy()
         if not os.path.isdir(fig_dir):
             os.mkdir(fig_dir)
-        plot_match(self.model, self.disc, z_data, idx_epoch, loss, fig_dir)
+        plot_match(self.model, self.disc, z0, z_data, idx_epoch, loss, fig_dir)
 
     def configure_optimizers(self):
         lr = self.lr

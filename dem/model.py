@@ -31,29 +31,21 @@ class GenODE(nn.Module):
         sigma = torch.exp(self.z0_log_sigma) * torch.ones(self.D).float()
         return sigma
 
-    def forward(self, N: int):
-        z0, _ = self.draw_z0t0(N=N)
+    def forward(self, z0):
+        N = z0.size(0)
         t_span = torch.linspace(0, 1, N).float()
         z = self.ode.trajectory(z0, t_span).diagonal()
         z = torch.transpose(z, 0, 1)
-        return z0, t_span, z
+        return z
 
-    def draw_z0t0(self, N: int):
+    def draw_z0(self, N: int):
         rand_e = torch.randn((N, self.D)).float()
         z0 = self.z0_mean + self.z0_sigma * rand_e
-        ts = np.random.uniform(0, 1, size=(N, 2))
-        ts[:, 0] = 0.0
-        ts = torch.from_numpy(ts).float()
-        return z0, ts
+        return z0
 
     @torch.no_grad()
-    def draw_z_numpy(self, N: int):
-        _, _, z = self(N)
-        return z.detach().numpy()
-
-    @torch.no_grad()
-    def traj_numpy(self, N: int, n_timepoints: int):
-        z0, _ = self.draw_z0t0(N=N)
+    def traj_numpy(self, z0, n_timepoints: int):
+        z0 = torch.from_numpy(z0).float()
         t_span = torch.linspace(0, 1, n_timepoints).float()
         z = self.ode.trajectory(z0, t_span)
         return z.detach().cpu().numpy()

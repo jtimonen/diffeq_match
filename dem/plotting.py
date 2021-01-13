@@ -16,10 +16,9 @@ def draw_plot(save_name, save_dir=".", **kwargs):
         plt.close()
 
 
-def plot_match(model, disc, z_data, idx_epoch, loss, save_dir=".", **kwargs):
+def plot_match(model, disc, z0, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     n_timepoints = 30
-    n_draws = 100
-    z_traj = model.traj_numpy(n_draws, n_timepoints)
+    z_traj = model.traj_numpy(z0, n_timepoints)
     u = create_grid_around(z_data, 16)
     v = model.defunc_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)

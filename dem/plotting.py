@@ -17,7 +17,6 @@ def draw_plot(save_name, save_dir=".", **kwargs):
 
 def plot_match(
     z_data,
-    z0,
     title,
     u=None,
     v=None,

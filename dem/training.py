@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as func
 import pytorch_lightning as pl
-
 from .plotting import plot_match
 
 
@@ -142,8 +141,12 @@ class GANLearner(pl.LightningModule):
         lr = self.lr
         b1 = 0.5
         b2 = 0.999
-        opt_g = torch.optim.Adam(self.model.parameters(), lr=lr, betas=(b1, b2))
-        opt_d = torch.optim.Adam(self.disc.parameters(), lr=lr, betas=(b1, b2))
+        opt_g = torch.optim.Adam(
+            self.model.parameters(), lr=lr, betas=(b1, b2), weight_decay=self.lr_decay
+        )
+        opt_d = torch.optim.Adam(
+            self.disc.parameters(), lr=lr, betas=(b1, b2), weight_decay=self.lr_decay
+        )
         return [opt_g, opt_d], []
 
     def train_dataloader(self):

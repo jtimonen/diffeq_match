@@ -10,6 +10,7 @@ from .training import MMDLearner, GANLearner
 from .data import create_dataloader, MyDataset
 from .networks import TanhNetOneLayer, ReluNetTwoLayer
 from .callbacks import MyCallback
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 
 class GenODE(nn.Module):
@@ -124,11 +125,13 @@ class GenODE(nn.Module):
             plot_freq,
         )
         save_path = learner.outdir
+        lr_monitor = LearningRateMonitor(logging_interval="step", log_momentum=True)
+        plotter = MyCallback()
         trainer = Trainer(
             min_epochs=min_epochs,
             max_epochs=max_epochs,
             default_root_dir=save_path,
-            callbacks=[MyCallback()],
+            callbacks=[plotter, lr_monitor],
         )
         trainer.fit(learner)
 

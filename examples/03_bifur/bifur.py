@@ -5,10 +5,13 @@ import torch
 N = 1000
 
 z_data, t_data = sim(3, N, 0.06)
-# plot_sim(z_data, t_data)
+plot_sim(z_data, t_data)
 
-model = GenODE(2, [-0.7, -1.0], n_hidden=256)
+loc = [[1.0, 0.5], [1.0, -1.0]]
+std = [0.05, 0.05]
+
+model = GenODE(loc, std, n_hidden=128)
 
 zz = torch.from_numpy(z_data).float()
 
-model.fit_gan(zz, n_epochs=5000, lr=0.005, plot_freq=10)
+model.fit_gan(zz, n_epochs=500, lr=0.005, plot_freq=5)

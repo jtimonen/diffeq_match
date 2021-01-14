@@ -43,10 +43,10 @@ class GenODE(nn.Module):
         sigma = torch.exp(self.log_terminal_std).view(-1, 1)
         return sigma.repeat(1, self.D)
 
-    def forward(self, z0):
-        N = z0.size(0)
+    def forward(self, z_end):
+        N = z_end.size(0)
         t_span = torch.linspace(0, 1, N).float()
-        z = self.ode.trajectory(z0, t_span).diagonal()
+        z = self.ode.trajectory(z_end, t_span).diagonal()
         z = torch.transpose(z, 0, 1)
         return z
 

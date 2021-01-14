@@ -72,7 +72,7 @@ class GANLearner(pl.LightningModule):
     ):
         super().__init__()
         self.N = len(dataloader.dataset)
-        self.z0 = model.draw_z0(self.N)
+        self.z0 = model.draw_terminal(N=self.N)
         self.model = model
         self.dataloader = dataloader
         self.lr = lr

@@ -6,11 +6,10 @@ from torchdyn.models import NeuralDE
 from pytorch_lightning import Trainer
 
 from .math import MMD
-from .training import MMDLearner, GANLearner
+from .training import Learner
 from .data import create_dataloader, MyDataset
 from .networks import TanhNetOneLayer, ReluNetTwoLayer
 from .callbacks import MyCallback
-from pytorch_lightning.callbacks import LearningRateMonitor
 
 
 class GenODE(nn.Module):
@@ -33,7 +32,8 @@ class GenODE(nn.Module):
         )
         self.D = D
         self.n_terminal = terminal_loc.shape[0]
-        assert len(terminal_std) == D, "terminal_std must have length " + D
+        S = self.n_terminal
+        assert len(terminal_std) == S, "terminal_std must have length " + S
         self.terminal_loc = torch.from_numpy(terminal_loc).float()
         self.log_terminal_std = torch.log(torch.tensor(terminal_std).float())
         self.outdir = os.getcwd()
@@ -73,30 +73,32 @@ class GenODE(nn.Module):
         f = self.ode.defunc(0, z).cpu().detach().numpy()
         return f
 
-    def fit_mmd(
+    def fit(
         self,
         z_data,
-        n_draws=100,
-        n_timepoints=30,
         batch_size=None,
         n_epochs: int = 100,
         lr: float = 0.005,
         lr_decay: float = 1e-5,
-        mmd_ell: float = 1.0,
+        mode: str = "mmd",
         num_workers: int = 0,
         plot_freq=0,
     ):
-        mmd = MMD(D=self.D, ell2=mmd_ell)
+        mmd = None
+        disc = None
+        if mode == "mmd":
+            mmd = MMD(D=self.D, ell2=1.0)
+        else:
+            disc = Discriminator(D=self.D, n_hidden=64)
         ds = MyDataset(z_data)
         dataloader = create_dataloader(ds, batch_size, num_workers)
         min_epochs = n_epochs
         max_epochs = n_epochs
-        learner = MMDLearner(
+        learner = Learner(
             self,
             dataloader,
+            disc,
             mmd,
-            n_draws,
-            n_timepoints,
             lr,
             lr_decay,
             plot_freq,
@@ -107,41 +109,6 @@ class GenODE(nn.Module):
             max_epochs=max_epochs,
             default_root_dir=save_path,
             callbacks=[MyCallback()],
-        )
-        trainer.fit(learner)
-
-    def fit_gan(
-        self,
-        z_data,
-        batch_size=None,
-        n_epochs: int = 100,
-        lr: float = 0.001,
-        lr_decay: float = 1e-5,
-        disc_hidden: int = 64,
-        num_workers: int = 0,
-        plot_freq=0,
-    ):
-        disc = Discriminator(D=self.D, n_hidden=disc_hidden)
-        ds = MyDataset(z_data)
-        dataloader = create_dataloader(ds, batch_size, num_workers)
-        min_epochs = n_epochs
-        max_epochs = n_epochs
-        learner = GANLearner(
-            self,
-            dataloader,
-            disc,
-            lr,
-            lr_decay,
-            plot_freq,
-        )
-        save_path = learner.outdir
-        lr_monitor = LearningRateMonitor(logging_interval="step", log_momentum=True)
-        plotter = MyCallback()
-        trainer = Trainer(
-            min_epochs=min_epochs,
-            max_epochs=max_epochs,
-            default_root_dir=save_path,
-            callbacks=[plotter, lr_monitor],
         )
         trainer.fit(learner)
 

@@ -44,22 +44,24 @@ def plot_match(model, disc, z0, z_data, idx_epoch, loss, save_dir=".", **kwargs)
     plt.ylim(x_min, x_max)
     draw_plot(fn, save_dir, **kwargs)
 
-    # Create second plot
-    S = 40
-    u = create_grid_around(z_data, S)
-    val = disc.classify_numpy(u)
-    X = np.reshape(u[:, 0], (S, S))
-    Y = np.reshape(u[:, 1], (S, S))
-    Z = np.reshape(val, (S, S))
+    if disc is not None:
 
-    plt.figure(figsize=(8, 8))
-    plt.contourf(X, Y, Z)
-    plt.colorbar()
-    plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.3)
+        # Create second plot
+        S = 40
+        u = create_grid_around(z_data, S)
+        val = disc.classify_numpy(u)
+        X = np.reshape(u[:, 0], (S, S))
+        Y = np.reshape(u[:, 1], (S, S))
+        Z = np.reshape(val, (S, S))
 
-    plt.title("Discriminator output")
-    x_min = np.min(z_data) * 1.5
-    x_max = np.max(z_data) * 1.5
-    plt.xlim(x_min, x_max)
-    plt.ylim(x_min, x_max)
-    draw_plot(fn2, save_dir, **kwargs)
+        plt.figure(figsize=(8, 8))
+        plt.contourf(X, Y, Z)
+        plt.colorbar()
+        plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.3)
+
+        plt.title("Discriminator output")
+        x_min = np.min(z_data) * 1.5
+        x_max = np.max(z_data) * 1.5
+        plt.xlim(x_min, x_max)
+        plt.ylim(x_min, x_max)
+        draw_plot(fn2, save_dir, **kwargs)

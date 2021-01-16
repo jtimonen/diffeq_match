@@ -25,12 +25,12 @@ def plot_match(model, disc, z0, z_data, idx_epoch, loss, save_dir=".", **kwargs)
     loss_str = "{:.5f}".format(loss)
     title = "epoch " + epoch_str + ", loss = " + loss_str
     fn = "fig_" + epoch_str + ".png"
+    fn2 = "cls_" + epoch_str + ".png"
     print("plotting " + fn)
 
     # Create plot
-    plt.figure(figsize=(10, 10))
-    if u is not None:
-        plt.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
+    plt.figure(figsize=(8, 8))
+    plt.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
     plt.scatter(z_data[:, 0], z_data[:, 1], alpha=0.75)
     if z_traj is not None:
         L = z_traj.shape[1]
@@ -43,3 +43,23 @@ def plot_match(model, disc, z0, z_data, idx_epoch, loss, save_dir=".", **kwargs)
     plt.xlim(x_min, x_max)
     plt.ylim(x_min, x_max)
     draw_plot(fn, save_dir, **kwargs)
+
+    # Create second plot
+    S = 40
+    u = create_grid_around(z_data, S)
+    val = disc.classify_numpy(u)
+    X = np.reshape(u[:, 0], (S, S))
+    Y = np.reshape(u[:, 1], (S, S))
+    Z = np.reshape(val, (S, S))
+
+    plt.figure(figsize=(8, 8))
+    plt.contourf(X, Y, Z)
+    plt.colorbar()
+    plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.3)
+
+    plt.title("Discriminator output")
+    x_min = np.min(z_data) * 1.5
+    x_max = np.max(z_data) * 1.5
+    plt.xlim(x_min, x_max)
+    plt.ylim(x_min, x_max)
+    draw_plot(fn2, save_dir, **kwargs)

@@ -1,1 +1,1 @@
-convert -delay 30 -loop 0 out/figs/cls_*.png out/discriminator.gif
+convert -delay 10 -loop 0 out/figs/cls_*.png out/discriminator.gif

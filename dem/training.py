@@ -55,7 +55,7 @@ class Learner(pl.LightningModule):
         else:
             # generator
             if optimizer_idx == 0:
-                if idx_epoch % 1 == 0:
+                if True:
                     z_gen = self.model(self.z0)
                     # ground truth result (ie: all fake)
                     # put on same device cuz we created this tensor inside training_loop

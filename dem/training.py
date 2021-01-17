@@ -29,6 +29,7 @@ class Learner(pl.LightningModule):
         self.disc = disc
         self.mmd = mmd
         self.plot_freq = plot_freq
+        self.g_loss = 0.0
 
         if not os.path.isdir(outdir):
             os.mkdir(outdir)
@@ -40,49 +41,60 @@ class Learner(pl.LightningModule):
     def adversarial_loss(self, y_hat, y):
         return func.binary_cross_entropy(y_hat, y)
 
-    def training_step(self, batch, batch_idx, optimizer_idx=0):
-        z_data = batch
+    def training_step(self, data_batch, batch_idx, optimizer_idx=0):
+        idx_epoch = self.current_epoch
+        z_data = data_batch
         N = z_data.size(0)
-        z_gen = self.model(self.z0)
         if self.mode == "mmd":
+            z_gen = self.model(self.z0)
             loss = self.mmd(z_data, z_gen)
+            self.log("train_mmd", loss)
             return loss
         else:
             # generator
             if optimizer_idx == 0:
+                if idx_epoch % 1 == 0:
+                    z_gen = self.model(self.z0)
+                    # ground truth result (ie: all fake)
+                    # put on same device cuz we created this tensor inside training_loop
+                    valid = torch.ones(N, 1)
+                    valid = valid.type_as(z_gen)
 
-                # ground truth result (ie: all fake)
-                # put on same device cuz we created this tensor inside training_loop
-                valid = torch.ones(N, 1)
-                valid = valid.type_as(z_gen)
-
-                # how well can it make discriminator think it is data
-                d_gen = self.disc(z_gen)
-                g_loss = self.adversarial_loss(d_gen, valid)
-                self.log("g_loss", g_loss)
-                return g_loss
+                    # how well can it make discriminator think it is data
+                    d_gen = self.disc(z_gen)
+                    g_loss = self.adversarial_loss(d_gen, valid)
+                    self.g_loss = g_loss
+                    self.log("train_g_loss", g_loss)
+                    return g_loss
+                else:
+                    return self.g_loss
 
             # discriminator
             elif optimizer_idx == 1:
-
                 # how well can it label data as data
                 valid = torch.ones(N, 1).type_as(z_data)
                 d_data = self.disc(z_data)
                 real_loss = self.adversarial_loss(d_data, valid)
 
                 # how well can it label as fake?
-                fake = torch.zeros(N, 1).type_as(z_gen)
+                z_gen = self.model(self.z0)
+                fake = torch.zeros(N, 1).type_as(z_data)
                 d_gen = self.disc(z_gen.detach())
                 fake_loss = self.adversarial_loss(d_gen, fake)
 
                 # discriminator loss is the average of these
-                self.log("real_loss", real_loss)
-                self.log("fake_loss", fake_loss)
                 d_loss = (real_loss + fake_loss) / 2
-                self.log("d_loss", d_loss)
+                self.log("train_d_loss", d_loss)
                 return d_loss
             else:
                 raise ValueError("optimizer_idx must be 0 or 1!")
+
+    def validation_step(self, data_batch, batch_idx):
+        assert batch_idx == 0, "What is happening?"
+        z_gen = self.model(self.z0)
+        mmd = self.mmd(data_batch, z_gen)
+        self.log("valid_mmd", mmd)
+        return mmd
 
     def visualize(self, z_data, loss, idx_epoch):
         outdir = self.outdir
@@ -113,4 +125,7 @@ class Learner(pl.LightningModule):
             return [opt_g, opt_d], []
 
     def train_dataloader(self):
+        return self.dataloader
+
+    def val_dataloader(self):
         return self.dataloader

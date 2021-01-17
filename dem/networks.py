@@ -7,7 +7,7 @@ class TanhNetOneLayer(nn.Module):
     tangent activation function.
     """
 
-    def __init__(self, n_input: int, n_output: int, n_hidden: int = 32):
+    def __init__(self, n_input: int, n_output: int, n_hidden: int = 128):
         super().__init__()
         self.n_input = n_input
         self.n_input = n_output
@@ -21,21 +21,21 @@ class TanhNetOneLayer(nn.Module):
         return self.layers(z)
 
 
-class ReluNetTwoLayer(nn.Module):
+class LeakyReluNetTwoLayer(nn.Module):
     """A fully connected network with two hidden layers. Uses the ReLU
     activation function.
     """
 
-    def __init__(self, n_input: int, n_output: int, n_hidden: int = 32):
+    def __init__(self, n_input: int, n_output: int, n_hidden: int = 64):
         super().__init__()
         self.n_input = n_input
         self.n_input = n_output
         self.n_hidden = n_hidden
         self.layers = nn.Sequential(
             nn.Linear(n_input, n_hidden),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(n_hidden, n_hidden),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(n_hidden, n_output),
         )
 

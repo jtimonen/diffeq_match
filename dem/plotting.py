@@ -57,9 +57,9 @@ def plot_match(model, disc, z0, z_data, idx_epoch, loss, save_dir=".", **kwargs)
         plt.figure(figsize=(8, 8))
         plt.contourf(X, Y, Z)
         plt.colorbar()
-        plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.3)
+        plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.2)
 
-        plt.title("Discriminator output")
+        plt.title("Discriminator output, epoch = " + epoch_str)
         x_min = np.min(z_data) * 1.5
         x_max = np.max(z_data) * 1.5
         plt.xlim(x_min, x_max)

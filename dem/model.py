@@ -8,7 +8,7 @@ from pytorch_lightning import Trainer
 from .math import MMD
 from .training import Learner
 from .data import create_dataloader, MyDataset
-from .networks import TanhNetOneLayer, ReluNetTwoLayer
+from .networks import TanhNetOneLayer, LeakyReluNetTwoLayer
 from .callbacks import MyCallback
 
 
@@ -84,11 +84,9 @@ class GenODE(nn.Module):
         num_workers: int = 0,
         plot_freq=0,
     ):
-        mmd = None
         disc = None
-        if mode == "mmd":
-            mmd = MMD(D=self.D, ell2=1.0)
-        else:
+        mmd = MMD(D=self.D, ell2=1.0)
+        if mode == "gan":
             disc = Discriminator(D=self.D, n_hidden=64)
         ds = MyDataset(z_data)
         dataloader = create_dataloader(ds, batch_size, num_workers)
@@ -118,7 +116,7 @@ class Discriminator(nn.Module):
 
     def __init__(self, D: int, n_hidden: int = 64):
         super().__init__()
-        self.net = ReluNetTwoLayer(D, 1, n_hidden)
+        self.net = LeakyReluNetTwoLayer(D, 1, n_hidden)
         self.D = D
 
     def forward(self, z):

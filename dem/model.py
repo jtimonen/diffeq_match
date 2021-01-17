@@ -79,7 +79,8 @@ class GenODE(nn.Module):
         batch_size=None,
         n_epochs: int = 100,
         lr: float = 0.005,
-        lr_decay: float = 1e-5,
+        lr_disc: float = 0.005,
+        lr_decay: float = 1e-6,
         mode: str = "mmd",
         num_workers: int = 0,
         plot_freq=0,
@@ -98,6 +99,7 @@ class GenODE(nn.Module):
             disc,
             mmd,
             lr,
+            lr_disc,
             lr_decay,
             plot_freq,
         )

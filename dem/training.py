@@ -13,7 +13,8 @@ class Learner(pl.LightningModule):
         dataloader,
         disc: nn.Module,
         mmd: nn.Module,
-        lr: float,
+        lr_init: float,
+        lr_disc_init: float,
         lr_decay: float,
         plot_freq=0,
         outdir="out",
@@ -24,7 +25,8 @@ class Learner(pl.LightningModule):
         self.z0 = model.draw_terminal(N=self.N)
         self.model = model
         self.dataloader = dataloader
-        self.lr = lr
+        self.lr_init = lr_init
+        self.lr_disc_init = lr_disc_init
         self.lr_decay = lr_decay
         self.disc = disc
         self.mmd = mmd
@@ -107,18 +109,20 @@ class Learner(pl.LightningModule):
         plot_match(self.model, self.disc, z0, z_data, idx_epoch, loss, fig_dir)
 
     def configure_optimizers(self):
-        lr = self.lr
         b1 = 0.5
         b2 = 0.999
         opt_g = torch.optim.Adam(
-            self.model.parameters(), lr=lr, betas=(b1, b2), weight_decay=self.lr_decay
+            self.model.parameters(),
+            lr=self.lr_init,
+            betas=(b1, b2),
+            weight_decay=self.lr_decay,
         )
         if self.mode == "mmd":
             return opt_g
         else:
             opt_d = torch.optim.Adam(
                 self.disc.parameters(),
-                lr=lr,
+                lr=self.lr_disc_init,
                 betas=(b1, b2),
                 weight_decay=self.lr_decay,
             )

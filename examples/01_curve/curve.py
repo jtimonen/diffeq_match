@@ -14,4 +14,4 @@ model = GenODE(t_loc, t_std)
 zz = torch.from_numpy(z_data).float()
 
 # model.fit_gan(zz, n_epochs=600, plot_freq=10, lr=0.001)
-model.fit(zz, n_epochs=300, plot_freq=10, lr=0.005, mode="gan")
+model.fit(zz, n_epochs=600, plot_freq=10, lr=0.005, mode="gan")

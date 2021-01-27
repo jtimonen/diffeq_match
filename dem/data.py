@@ -32,7 +32,7 @@ class MyDataset(Dataset):
 
 
 def create_dataloader(
-    dataset: torch.utils.data.Dataset, batch_size=None, num_workers=None
+    dataset: torch.utils.data.Dataset, batch_size=None, num_workers=None, shuffle=True
 ):
     """Create a torch data loader."""
     # Split to training and validation sets
@@ -41,6 +41,6 @@ def create_dataloader(
         batch_size = N
 
     loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+        dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
     )
     return loader

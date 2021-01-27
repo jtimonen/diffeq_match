@@ -7,7 +7,7 @@ class TanhNetOneLayer(nn.Module):
     tangent activation function.
     """
 
-    def __init__(self, n_input: int, n_output: int, n_hidden: int = 128):
+    def __init__(self, n_input: int, n_output: int, n_hidden: int = 64):
         super().__init__()
         self.n_input = n_input
         self.n_input = n_output

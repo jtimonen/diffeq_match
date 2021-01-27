@@ -9,7 +9,7 @@ def sim(idx: int = 1, N: int = 500, sigma: float = 0.1, **sim_kwargs):
     :return: a numpy array with shape (2, N) and a numpy array with shape (N)
     """
     if idx == 1:
-        return sim_line(N, sigma)
+        return sim_curve(N, sigma)
     elif idx == 2:
         return sim_spiral(N, sigma, **sim_kwargs)
     elif idx == 3:
@@ -18,11 +18,11 @@ def sim(idx: int = 1, N: int = 500, sigma: float = 0.1, **sim_kwargs):
         raise ValueError("idx must be 1 (line), 2 (spiral) or 3 (bifur)!")
 
 
-def sim_line(N: int, sigma: float):
-    """A line."""
+def sim_curve(N: int, sigma: float):
+    """An S-shaped curve."""
     t = np.linspace(0, 1, N)
-    z1 = 2.0 * (t - 0.5)
-    z2 = np.zeros(z1.shape)
+    z1 = 3.0 * (t - 0.5)
+    z2 = np.sin(2 * z1)
     z = add_noise_and_stack(z1, z2, sigma)
     return z, t
 

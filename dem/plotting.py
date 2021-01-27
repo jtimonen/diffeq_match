@@ -16,27 +16,22 @@ def draw_plot(save_name, save_dir=".", **kwargs):
         plt.close()
 
 
-def plot_match(model, disc, z0, z_data, idx_epoch, loss, save_dir=".", **kwargs):
-    n_timepoints = 30
-    z_traj = model.traj_numpy(z0, n_timepoints)
+def plot_match(model, disc, z_gen, z_data, idx_epoch, loss, save_dir=".", **kwargs):
+    z_gen = z_gen.detach().cpu().numpy()
+    z_data = z_data.detach().cpu().numpy()
     u = create_grid_around(z_data, 16)
     v = model.defunc_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
     loss_str = "{:.5f}".format(loss)
-    title = "epoch " + epoch_str + ", loss = " + loss_str
+    title = "epoch " + epoch_str + ", mmd = " + loss_str
     fn = "fig_" + epoch_str + ".png"
     fn2 = "cls_" + epoch_str + ".png"
-    print("plotting " + fn)
 
     # Create plot
     plt.figure(figsize=(8, 8))
     plt.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
-    plt.scatter(z_data[:, 0], z_data[:, 1], alpha=0.75)
-    if z_traj is not None:
-        L = z_traj.shape[1]
-        for j in range(0, L):
-            plt.plot(z_traj[:, j, 0], z_traj[:, j, 1], ".-", c="orange", alpha=0.7)
-    plt.scatter(z_traj[0, :, 0], z_traj[0, :, 1], c="k", marker="x", alpha=0.7)
+    plt.scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
+    plt.scatter(z_gen[:, 0], z_gen[:, 1], marker="x", alpha=0.7)
     plt.title(title)
     x_min = np.min(z_data) * 1.5
     x_max = np.max(z_data) * 1.5

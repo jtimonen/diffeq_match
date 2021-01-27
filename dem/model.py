@@ -19,9 +19,9 @@ class GenODE(nn.Module):
         self,
         terminal_loc,
         terminal_std,
-        n_hidden: int = 128,
-        atol: float = 1e-6,
-        rtol: float = 1e-6,
+        n_hidden: int = 64,
+        atol: float = 1e-5,
+        rtol: float = 1e-5,
     ):
         super().__init__()
         terminal_loc = np.array(terminal_loc)
@@ -69,14 +69,15 @@ class GenODE(nn.Module):
         return z.detach().cpu().numpy()
 
     def defunc_numpy(self, z):
+        """Note the minus."""
         z = torch.from_numpy(z).float()
         f = self.ode.defunc(0, z).cpu().detach().numpy()
-        return f
+        return -f
 
     def fit(
         self,
         z_data,
-        batch_size=None,
+        batch_size=64,
         n_epochs: int = 100,
         lr: float = 0.005,
         lr_disc: float = 0.005,
@@ -90,12 +91,14 @@ class GenODE(nn.Module):
         if mode == "gan":
             disc = Discriminator(D=self.D, n_hidden=64)
         ds = MyDataset(z_data)
-        dataloader = create_dataloader(ds, batch_size, num_workers)
+        train_loader = create_dataloader(ds, batch_size, num_workers, shuffle=True)
+        valid_loader = create_dataloader(ds, None, num_workers, shuffle=False)
         min_epochs = n_epochs
         max_epochs = n_epochs
         learner = Learner(
             self,
-            dataloader,
+            train_loader,
+            valid_loader,
             disc,
             mmd,
             lr,

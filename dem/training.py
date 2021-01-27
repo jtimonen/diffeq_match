@@ -43,6 +43,9 @@ class Learner(pl.LightningModule):
     def adversarial_loss(self, y_hat, y):
         return func.binary_cross_entropy(y_hat, y)
 
+    def log_eps(self, x):
+        return torch.log(x + 1e-8)
+
     def training_step(self, data_batch, batch_idx, optimizer_idx=0):
         z_data = data_batch
         N = z_data.size(0)
@@ -55,33 +58,18 @@ class Learner(pl.LightningModule):
         else:
             # generator
             if optimizer_idx == 0:
-                z_gen = self.model(z0_draw)
-                # ground truth result (ie: all fake)
-                # put on same device cuz we created this tensor inside training_loop
-                valid = torch.ones(N, 1)
-                valid = valid.type_as(z_gen)
-
-                # how well can it make discriminator think it is data
-                d_gen = self.disc(z_gen)
-                g_loss = self.adversarial_loss(d_gen, valid)
+                G_z = self.model(z0_draw)
+                D_G_z = self.disc(G_z)
+                g_loss = torch.mean(-self.log_eps(D_G_z))
                 self.log("train_g_loss", g_loss)
                 return g_loss
 
             # discriminator
             elif optimizer_idx == 1:
-                # how well can it label data as data
-                valid = torch.ones(N, 1).type_as(z_data)
-                d_data = self.disc(z_data)
-                real_loss = self.adversarial_loss(d_data, valid)
-
-                # how well can it label as fake?
-                z_gen = self.model(z0_draw)
-                fake = torch.zeros(N, 1).type_as(z_data)
-                d_gen = self.disc(z_gen.detach())
-                fake_loss = self.adversarial_loss(d_gen, fake)
-
-                # discriminator loss is the average of these
-                d_loss = (real_loss + fake_loss) / 2
+                D_x = self.disc(z_data)
+                G_z = self.model(z0_draw)
+                D_G_z = self.disc(G_z.detach())
+                d_loss = - torch.mean(self.log_eps(D_x) + self.log_eps(1 - D_G_z))
                 self.log("train_d_loss", d_loss)
                 return d_loss
             else:

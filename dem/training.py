@@ -51,17 +51,17 @@ class Learner(pl.LightningModule):
         N = z_data.size(0)
         z0_draw = self.model.draw_terminal(N=N)
         if self.mode == "mmd":
-            z_gen = self.model(z0_draw)
-            loss = self.mmd(z_data, z_gen)
+            G_z = self.model(z0_draw)
+            z_data_whole = self.train_loader.dataset.z
+            loss = self.mmd(z_data_whole, G_z)
             self.log("train_mmd", loss)
-            return loss
+            return torch.log(loss)
         else:
             # generator
             if optimizer_idx == 0:
                 G_z = self.model(z0_draw)
                 D_G_z = self.disc(G_z)
                 g_loss = torch.mean(-self.log_eps(D_G_z))
-                self.log("train_g_loss", g_loss)
                 return g_loss
 
             # discriminator
@@ -69,8 +69,7 @@ class Learner(pl.LightningModule):
                 D_x = self.disc(z_data)
                 G_z = self.model(z0_draw)
                 D_G_z = self.disc(G_z.detach())
-                d_loss = - torch.mean(self.log_eps(D_x) + self.log_eps(1 - D_G_z))
-                self.log("train_d_loss", d_loss)
+                d_loss = -torch.mean(self.log_eps(D_x) + self.log_eps(1 - D_G_z))
                 return d_loss
             else:
                 raise ValueError("optimizer_idx must be 0 or 1!")
@@ -98,12 +97,9 @@ class Learner(pl.LightningModule):
         plot_match(self.model, self.disc, z_gen, z_data, idx_epoch, loss, fig_dir)
 
     def configure_optimizers(self):
-        b1 = 0.5
-        b2 = 0.999
         opt_g = torch.optim.Adam(
             self.model.parameters(),
             lr=self.lr_init,
-            betas=(b1, b2),
             weight_decay=self.lr_decay,
         )
         if self.mode == "mmd":
@@ -112,7 +108,6 @@ class Learner(pl.LightningModule):
             opt_d = torch.optim.Adam(
                 self.disc.parameters(),
                 lr=self.lr_disc_init,
-                betas=(b1, b2),
                 weight_decay=self.lr_decay,
             )
             return [opt_g, opt_d], []

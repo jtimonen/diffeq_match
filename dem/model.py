@@ -8,7 +8,7 @@ from pytorch_lightning import Trainer
 from .math import MMD
 from .training import Learner
 from .data import create_dataloader, MyDataset
-from .networks import TanhNetOneLayer, LeakyReluNetTwoLayer
+from .networks import TanhNetOneLayer, TanhNetTwoLayer, LeakyReluNetTwoLayer
 from .callbacks import MyCallback
 
 

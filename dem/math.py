@@ -85,11 +85,22 @@ class MMD(nn.Module):
         return mmd
 
 
+def log_eps(x):
+    """Numerically stable logarithm."""
+    return torch.log(x + 1e-8)
+
+
 def mvrnorm(mu, s2):
     """Draw random samples from N(mu, s2)."""
     dist = Normal(mu, s2.sqrt())
     smp = dist.rsample()
     return smp
+
+
+def accuracy(val_real, val_fake):
+    N = len(val_real) + len(val_fake)
+    corr = np.sum(val_real >= 0.5) + np.sum(val_fake < 0.5)
+    return corr / N
 
 
 def dot_torch(a, b):

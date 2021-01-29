@@ -1,6 +1,5 @@
 from dem import sim, plot_sim
-from dem import GenODE
-from dem.model import Discriminator
+from dem import GenODE, Discriminator
 
 import torch
 
@@ -15,12 +14,4 @@ model = GenODE(t_loc, t_std, n_hidden=128)
 zz = torch.from_numpy(z_data).float()
 disc = Discriminator(D=model.D)
 
-model.fit(
-    zz,
-    n_epochs=500,
-    lr=0.005,
-    lr_disc=0.005,
-    plot_freq=10,
-    batch_size=64,
-    disc=disc
-)
+disc.fit(zz, plot_freq=10, n_epochs=300)

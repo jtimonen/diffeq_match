@@ -4,11 +4,13 @@ import torch.nn as nn
 import numpy as np
 from torchdyn.models import NeuralDE
 from pytorch_lightning import Trainer
+import pytorch_lightning as pl
+from .plotting import plot_match
+from .math import mvrnorm
 
-from .math import MMD, gaussian_kernel_log
-from .training import Learner
+from .math import MMD, log_eps
 from .data import create_dataloader, MyDataset
-from .networks import TanhNetOneLayer, TanhNetTwoLayer, LeakyReluNetTwoLayer
+from .networks import TanhNetOneLayer
 from .callbacks import MyCallback
 
 
@@ -83,19 +85,13 @@ class GenODE(nn.Module):
         lr_disc: float = 0.005,
         lr_decay: float = 1e-6,
         disc=None,
-        num_workers: int = 0,
         plot_freq=0,
     ):
         mmd = MMD(D=self.D, ell2=1.0)
-        ds = MyDataset(z_data)
-        train_loader = create_dataloader(ds, batch_size, num_workers, shuffle=True)
-        valid_loader = create_dataloader(ds, None, num_workers, shuffle=False)
-        min_epochs = n_epochs
-        max_epochs = n_epochs
-        learner = Learner(
+        learner = TrainingSetup(
             self,
-            train_loader,
-            valid_loader,
+            z_data,
+            batch_size,
             disc,
             mmd,
             lr,
@@ -105,57 +101,111 @@ class GenODE(nn.Module):
         )
         save_path = learner.outdir
         trainer = Trainer(
-            min_epochs=min_epochs,
-            max_epochs=max_epochs,
+            min_epochs=n_epochs,
+            max_epochs=n_epochs,
             default_root_dir=save_path,
             callbacks=[MyCallback()],
         )
         trainer.fit(learner)
 
 
-class Discriminator(nn.Module):
-    """Classifier."""
-
-    def __init__(self, D: int, n_hidden: int = 64):
+class TrainingSetup(pl.LightningModule):
+    def __init__(
+        self,
+        model: nn.Module,
+        z_data,
+        batch_size: int,
+        disc: nn.Module,
+        mmd: nn.Module,
+        lr_init: float,
+        lr_disc_init: float,
+        lr_decay: float,
+        plot_freq=0,
+        outdir="out",
+    ):
         super().__init__()
-        self.net = LeakyReluNetTwoLayer(D, 1, n_hidden)
-        self.D = D
+        self.mode = "mmd" if (disc is None) else "gan"
+        num_workers = 0
+        ds = MyDataset(z_data)
+        train_loader = create_dataloader(ds, batch_size, num_workers, shuffle=True)
+        valid_loader = create_dataloader(ds, None, num_workers, shuffle=False)
+        self.N = len(train_loader.dataset)
+        self.model = model
+        self.train_loader = train_loader
+        self.valid_loader = valid_loader
+        self.lr_init = lr_init
+        self.lr_disc_init = lr_disc_init
+        self.lr_decay = lr_decay
+        self.disc = disc
+        self.mmd = mmd
+        self.plot_freq = plot_freq
 
-    def forward(self, z):
-        z = self.net(z)
-        validity = torch.sigmoid(z)
-        return validity
+        if not os.path.isdir(outdir):
+            os.mkdir(outdir)
+        self.outdir = outdir
 
-    def classify_numpy(self, z):
-        z = torch.from_numpy(z).float()
-        val = self(z)
-        return val.detach().cpu().numpy()
+    def forward(self, n_draws: int):
+        return self.model(n_draws)
 
-    def accuracy(self, val, target):
-        N = len(target)
-        a = np.round(val)
-        corr = np.sum(a == target)
-        return corr / N
+    def training_step(self, data_batch, batch_idx, optimizer_idx=0):
+        z_data = data_batch
+        N = z_data.size(0)
+        z0_draw = self.model.draw_terminal(N=N)
+        if self.mode == "mmd":
+            G_z = self.model(z0_draw)
+            loss = self.mmd(z_data, G_z)
+            self.log("train_mmd", loss)
+            return loss
+        else:
+            D_x = self.disc(z_data)
+            s2 = torch.ones_like(z_data)
+            G_z = z_data + mvrnorm(z_data, s2)
+            D_G_z = self.disc(G_z.detach())
+            d_loss = -torch.mean(log_eps(D_x) + log_eps(1 - D_G_z))
+            return d_loss
 
+    def validation_step(self, data_batch, batch_idx):
+        assert batch_idx == 0, "batch_idx should be 0 in validation_step?"
+        z_data = data_batch
+        N = z_data.shape[0]
+        z0_draw = self.model.draw_terminal(N=N)
+        z_gen = self.model(z0_draw)
+        mmd = self.mmd(z_data, z_gen)
+        self.log("valid_mmd", mmd)
+        idx_epoch = self.current_epoch
+        pf = self.plot_freq
+        if pf > 0:
+            if idx_epoch % pf == 0:
+                self.visualize(z_gen, z_data, mmd, idx_epoch)
+        return mmd
 
-class ParzenWindow(nn.Module):
-    """Parzen window kernel density estimator."""
+    def visualize(self, z_gen, z_data, loss, idx_epoch):
+        outdir = self.outdir
+        fig_dir = os.path.join(outdir, "figs")
+        if not os.path.isdir(fig_dir):
+            os.mkdir(fig_dir)
+        z_gen = z_gen.detach().cpu().numpy()
+        z_data = z_data.detach().cpu().numpy()
+        plot_match(self.model, self.disc, z_gen, z_data, idx_epoch, loss, fig_dir)
 
-    def __init__(self, y):
-        super().__init__()
-        self.log_h = torch.nn.Parameter(torch.tensor(-3).float(), requires_grad=True)
-        self.y = y
-        self.N = y.size(0)
-        self.D = y.size(1)
+    def configure_optimizers(self):
+        opt_g = torch.optim.Adam(
+            self.model.parameters(),
+            lr=self.lr_init,
+            weight_decay=self.lr_decay,
+        )
+        if self.mode == "mmd":
+            return opt_g
+        else:
+            opt_d = torch.optim.Adam(
+                self.disc.parameters(),
+                lr=self.lr_disc_init,
+                weight_decay=self.lr_decay,
+            )
+            return opt_d
 
-    def forward(self, x):
-        h = torch.exp(self.log_h)
-        V = h ** self.D
-        phi = 1 / (2 * np.pi * self.D)
-        phi = phi * torch.exp(gaussian_kernel_log(x, self.y, h))
-        return 1 / V * torch.mean(phi, 1)
+    def train_dataloader(self):
+        return self.train_loader
 
-    def classify_numpy(self, x):
-        x = torch.from_numpy(x).float()
-        val = self(x)
-        return val.detach().cpu().numpy()
+    def val_dataloader(self):
+        return self.valid_loader

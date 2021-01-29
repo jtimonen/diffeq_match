@@ -17,15 +17,12 @@ def draw_plot(save_name, save_dir=".", **kwargs):
 
 
 def plot_match(model, disc, z_gen, z_data, idx_epoch, loss, save_dir=".", **kwargs):
-    z_gen = z_gen.detach().cpu().numpy()
-    z_data = z_data.detach().cpu().numpy()
     u = create_grid_around(z_data, 16)
     v = model.defunc_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
     loss_str = "{:.5f}".format(loss)
     title = "epoch " + epoch_str + ", mmd = " + loss_str
     fn = "fig_" + epoch_str + ".png"
-    fn2 = "cls_" + epoch_str + ".png"
 
     # Create plot
     plt.figure(figsize=(8, 8))
@@ -39,24 +36,29 @@ def plot_match(model, disc, z_gen, z_data, idx_epoch, loss, save_dir=".", **kwar
     plt.ylim(x_min, x_max)
     draw_plot(fn, save_dir, **kwargs)
 
-    if disc is not None:
 
-        # Create second plot
-        S = 40
-        u = create_grid_around(z_data, S)
-        val = disc.classify_numpy(u)
-        X = np.reshape(u[:, 0], (S, S))
-        Y = np.reshape(u[:, 1], (S, S))
-        Z = np.reshape(val, (S, S))
+def plot_disc(disc, z_fake, z_data, idx_epoch, loss, save_dir=".", **kwargs):
+    """Visualize discriminator output."""
+    epoch_str = "{0:04}".format(idx_epoch)
+    loss_str = "{:.5f}".format(loss)
+    title = "epoch " + epoch_str + ", loss = " + loss_str
+    fn = "cls_" + epoch_str + ".png"
+    S = 40
+    u = create_grid_around(z_data, S)
+    val = disc.classify_numpy(u)
+    X = np.reshape(u[:, 0], (S, S))
+    Y = np.reshape(u[:, 1], (S, S))
+    Z = np.reshape(val, (S, S))
 
-        plt.figure(figsize=(8, 8))
-        plt.contourf(X, Y, Z)
-        plt.colorbar()
-        plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.2)
+    plt.figure(figsize=(8, 8))
+    plt.contourf(X, Y, Z)
+    plt.colorbar()
+    plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.5)
+    plt.scatter(z_fake[:, 0], z_fake[:, 1], c="red", alpha=0.5)
 
-        plt.title("Discriminator output, epoch = " + epoch_str)
-        x_min = np.min(z_data) * 1.5
-        x_max = np.max(z_data) * 1.5
-        plt.xlim(x_min, x_max)
-        plt.ylim(x_min, x_max)
-        draw_plot(fn2, save_dir, **kwargs)
+    plt.title(title)
+    x_min = np.min(z_data) * 1.2
+    x_max = np.max(z_data) * 1.2
+    plt.xlim(x_min, x_max)
+    plt.ylim(x_min, x_max)
+    draw_plot(fn, save_dir, **kwargs)

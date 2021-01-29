@@ -12,6 +12,11 @@ t_std = [0.07]
 model = GenODE(t_loc, t_std, n_hidden=128)
 
 zz = torch.from_numpy(z_data).float()
-disc = Discriminator(D=model.D)
 
-disc.fit(zz, plot_freq=50, n_epochs=500, lr=0.005)
+# Create and fit discriminator
+disc = Discriminator(D=model.D)
+disc.fit(zz, plot_freq=50, n_epochs=300, lr=0.005)
+
+# Create and fit model
+model = GenODE(t_loc, t_std)
+model.fit(zz, plot_freq=10, n_epochs=500, lr=0.005, disc=disc, batch_size=64)

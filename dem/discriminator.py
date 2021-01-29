@@ -2,7 +2,6 @@ import os
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-import numpy as np
 from pytorch_lightning import Trainer
 
 from .data import create_dataloader, MyDataset
@@ -32,8 +31,8 @@ class Discriminator(nn.Module):
     def fit(
         self,
         z_data,
-        batch_size=64,
-        n_epochs: int = 100,
+        batch_size: int = 128,
+        n_epochs: int = 400,
         lr: float = 0.005,
         plot_freq=0,
     ):

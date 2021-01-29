@@ -6,7 +6,7 @@ from torchdyn.models import NeuralDE
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
 from .plotting import plot_match
-from .math import mvrnorm
+from .math import accuracy
 
 from .math import MMD, log_eps
 from .data import create_dataloader, MyDataset
@@ -21,7 +21,7 @@ class GenODE(nn.Module):
         self,
         terminal_loc,
         terminal_std,
-        n_hidden: int = 64,
+        n_hidden: int = 128,
         atol: float = 1e-5,
         rtol: float = 1e-5,
     ):
@@ -79,11 +79,9 @@ class GenODE(nn.Module):
     def fit(
         self,
         z_data,
-        batch_size=64,
-        n_epochs: int = 100,
+        batch_size=128,
+        n_epochs: int = 400,
         lr: float = 0.005,
-        lr_disc: float = 0.005,
-        lr_decay: float = 1e-6,
         disc=None,
         plot_freq=0,
     ):
@@ -95,8 +93,6 @@ class GenODE(nn.Module):
             disc,
             mmd,
             lr,
-            lr_disc,
-            lr_decay,
             plot_freq,
         )
         save_path = learner.outdir
@@ -118,8 +114,6 @@ class TrainingSetup(pl.LightningModule):
         disc: nn.Module,
         mmd: nn.Module,
         lr_init: float,
-        lr_disc_init: float,
-        lr_decay: float,
         plot_freq=0,
         outdir="out",
     ):
@@ -134,8 +128,6 @@ class TrainingSetup(pl.LightningModule):
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.lr_init = lr_init
-        self.lr_disc_init = lr_disc_init
-        self.lr_decay = lr_decay
         self.disc = disc
         self.mmd = mmd
         self.plot_freq = plot_freq
@@ -147,36 +139,41 @@ class TrainingSetup(pl.LightningModule):
     def forward(self, n_draws: int):
         return self.model(n_draws)
 
-    def training_step(self, data_batch, batch_idx, optimizer_idx=0):
-        z_data = data_batch
+    def generate_fake_data(self, z_data):
         N = z_data.size(0)
         z0_draw = self.model.draw_terminal(N=N)
+        z_fake = self.model(z0_draw)
+        return z_fake, z0_draw
+
+    def training_step(self, data_batch, batch_idx):
+        z_data = data_batch
+        z_fake, _ = self.generate_fake_data(z_data)
         if self.mode == "mmd":
-            G_z = self.model(z0_draw)
-            loss = self.mmd(z_data, G_z)
-            self.log("train_mmd", loss)
+            loss = self.mmd(z_data, z_fake)
             return loss
         else:
-            D_x = self.disc(z_data)
-            s2 = torch.ones_like(z_data)
-            G_z = z_data + mvrnorm(z_data, s2)
-            D_G_z = self.disc(G_z.detach())
-            d_loss = -torch.mean(log_eps(D_x) + log_eps(1 - D_G_z))
-            return d_loss
+            D_G_z = self.disc(z_fake)
+            loss = -torch.mean(log_eps(D_G_z)) + torch.log(self.mmd(z_data, z_fake))
+            return loss
 
     def validation_step(self, data_batch, batch_idx):
-        assert batch_idx == 0, "batch_idx should be 0 in validation_step?"
         z_data = data_batch
-        N = z_data.shape[0]
-        z0_draw = self.model.draw_terminal(N=N)
-        z_gen = self.model(z0_draw)
-        mmd = self.mmd(z_data, z_gen)
+        D_x = self.disc(z_data)  # classify real data
+        z_fake, _ = self.generate_fake_data(z_data)
+        D_G_z = self.disc(z_fake.detach())  # classify fake data
+        loss = -torch.mean(log_eps(D_G_z)) + torch.log(self.mmd(z_data, z_fake))
+        val_real = D_x.detach().cpu().numpy().flatten()
+        val_fake = D_G_z.detach().cpu().numpy().flatten()
+        acc = accuracy(val_real, val_fake)
+        mmd = self.mmd(z_fake, z_data)
+        self.log("valid_loss", loss)
+        self.log("valid_acc", acc)
         self.log("valid_mmd", mmd)
         idx_epoch = self.current_epoch
         pf = self.plot_freq
         if pf > 0:
             if idx_epoch % pf == 0:
-                self.visualize(z_gen, z_data, mmd, idx_epoch)
+                self.visualize(z_fake, z_data, mmd, idx_epoch)
         return mmd
 
     def visualize(self, z_gen, z_data, loss, idx_epoch):
@@ -192,17 +189,8 @@ class TrainingSetup(pl.LightningModule):
         opt_g = torch.optim.Adam(
             self.model.parameters(),
             lr=self.lr_init,
-            weight_decay=self.lr_decay,
         )
-        if self.mode == "mmd":
-            return opt_g
-        else:
-            opt_d = torch.optim.Adam(
-                self.disc.parameters(),
-                lr=self.lr_disc_init,
-                weight_decay=self.lr_decay,
-            )
-            return opt_d
+        return opt_g
 
     def train_dataloader(self):
         return self.train_loader

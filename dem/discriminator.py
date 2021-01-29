@@ -114,17 +114,17 @@ class DiscriminatorTrainingSetup(pl.LightningModule):
         pf = self.plot_freq
         if pf > 0:
             if idx_epoch % pf == 0:
-                self.visualize(z_fake, z_data, loss, idx_epoch)
+                self.visualize(z_data, loss, acc, idx_epoch)
         return loss
 
-    def visualize(self, z_fake, z_data, loss, idx_epoch):
+    def visualize(self, z_data, loss, acc, idx_epoch):
         outdir = self.outdir
         fig_dir = os.path.join(outdir, "figs")
         if not os.path.isdir(fig_dir):
             os.mkdir(fig_dir)
-        z_fake = z_fake.detach().cpu().numpy()
+        z_fake = None
         z_data = z_data.detach().cpu().numpy()
-        plot_disc(self.disc, z_fake, z_data, idx_epoch, loss, fig_dir)
+        plot_disc(self.disc, z_fake, z_data, idx_epoch, loss, acc, fig_dir)
 
     def configure_optimizers(self):
         opt = torch.optim.Adam(

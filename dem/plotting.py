@@ -37,28 +37,31 @@ def plot_match(model, disc, z_gen, z_data, idx_epoch, loss, save_dir=".", **kwar
     draw_plot(fn, save_dir, **kwargs)
 
 
-def plot_disc(disc, z_fake, z_data, idx_epoch, loss, save_dir=".", **kwargs):
+def plot_disc(disc, z_fake, z_data, idx_epoch, loss, acc, save_dir=".", **kwargs):
     """Visualize discriminator output."""
     epoch_str = "{0:04}".format(idx_epoch)
     loss_str = "{:.5f}".format(loss)
-    title = "epoch " + epoch_str + ", loss = " + loss_str
+    acc_str = "{:.5f}".format(acc)
+    title = "epoch " + epoch_str + ", loss = " + loss_str + ", acc = " + acc_str
     fn = "cls_" + epoch_str + ".png"
-    S = 40
+    S = 30
     u = create_grid_around(z_data, S)
     val = disc.classify_numpy(u)
     X = np.reshape(u[:, 0], (S, S))
     Y = np.reshape(u[:, 1], (S, S))
     Z = np.reshape(val, (S, S))
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(7.0, 6.5))
     plt.contourf(X, Y, Z)
     plt.colorbar()
-    plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.5)
-    plt.scatter(z_fake[:, 0], z_fake[:, 1], c="red", alpha=0.5)
+    if z_data is not None:
+        plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.3)
+    if z_fake is not None:
+        plt.scatter(z_fake[:, 0], z_fake[:, 1], c="red", alpha=0.3)
 
     plt.title(title)
-    x_min = np.min(z_data) * 1.2
-    x_max = np.max(z_data) * 1.2
+    x_min = np.min(z_data) * 1.25
+    x_max = np.max(z_data) * 1.25
     plt.xlim(x_min, x_max)
     plt.ylim(x_min, x_max)
     draw_plot(fn, save_dir, **kwargs)

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.distributions import Normal
+import numpy as np
 
 
 def pairwise_squared_distances(x: torch.Tensor, y: torch.Tensor):
@@ -19,8 +20,8 @@ def pairwise_squared_distances(x: torch.Tensor, y: torch.Tensor):
     return dist
 
 
-def gaussian_kernel(x: torch.Tensor, y: torch.Tensor, ell2):
-    """Evaluate Gaussian kernel for all pairs of x and y.
+def gaussian_kernel_log(x: torch.Tensor, y: torch.Tensor, ell2):
+    """Evaluate log of Gaussian kernel for all pairs of x and y.
 
     :param x: a tensor with shape *[n, d]*.
     :type x: torch.Tensor
@@ -39,8 +40,8 @@ def gaussian_kernel(x: torch.Tensor, y: torch.Tensor, ell2):
     y = y.unsqueeze(0)  # reshape to [1, m, d]
     X = x.expand(n, m, d)
     Y = y.expand(n, m, d)
-    log_K = -0.5 * (X - Y).pow(2).mean(2) / ell2
-    return torch.exp(log_K)
+    log_K = -0.5 * (X - Y).pow(2).sum(2) / ell2
+    return log_K
 
 
 class MMD(nn.Module):
@@ -70,11 +71,11 @@ class MMD(nn.Module):
         D = self.D
         assert d1 == D, "x must have " + str(D) + " columns! Found = " + str(d1)
         assert d2 == D, "y must have " + str(D) + " columns! Found = " + str(d2)
-        kxx = gaussian_kernel(x, x, self.ell2)
-        kyy = gaussian_kernel(y, y, self.ell2)
-        kxy = gaussian_kernel(x, y, self.ell2)
+        kxx = torch.exp(gaussian_kernel_log(x, x, self.ell2))
+        kyy = torch.exp(gaussian_kernel_log(y, y, self.ell2))
+        kxy = torch.exp(gaussian_kernel_log(x, y, self.ell2))
         mmd = kxx.mean() + kyy.mean() - 2 * kxy.mean()
-        return mmd.sqrt()
+        return torch.sqrt(mmd)
 
     def forward_numpy(self, x, y):
         """Forward pass but with numpy arrays as input."""

@@ -1,9 +1,9 @@
 import os
 import torch
 import torch.nn as nn
-import torch.nn.functional as func
 import pytorch_lightning as pl
 from .plotting import plot_match
+from .math import mvrnorm
 
 
 class Learner(pl.LightningModule):
@@ -40,9 +40,6 @@ class Learner(pl.LightningModule):
     def forward(self, n_draws: int):
         return self.model(n_draws)
 
-    def adversarial_loss(self, y_hat, y):
-        return func.binary_cross_entropy(y_hat, y)
-
     def log_eps(self, x):
         return torch.log(x + 1e-8)
 
@@ -52,27 +49,16 @@ class Learner(pl.LightningModule):
         z0_draw = self.model.draw_terminal(N=N)
         if self.mode == "mmd":
             G_z = self.model(z0_draw)
-            z_data_whole = self.train_loader.dataset.z
-            loss = self.mmd(z_data_whole, G_z)
+            loss = self.mmd(z_data, G_z)
             self.log("train_mmd", loss)
-            return torch.log(loss)
+            return loss
         else:
-            # generator
-            if optimizer_idx == 0:
-                G_z = self.model(z0_draw)
-                D_G_z = self.disc(G_z)
-                g_loss = torch.mean(-self.log_eps(D_G_z))
-                return g_loss
-
-            # discriminator
-            elif optimizer_idx == 1:
-                D_x = self.disc(z_data)
-                G_z = self.model(z0_draw)
-                D_G_z = self.disc(G_z.detach())
-                d_loss = -torch.mean(self.log_eps(D_x) + self.log_eps(1 - D_G_z))
-                return d_loss
-            else:
-                raise ValueError("optimizer_idx must be 0 or 1!")
+            D_x = self.disc(z_data)
+            s2 = torch.ones_like(z_data)
+            G_z = z_data + mvrnorm(z_data, s2)
+            D_G_z = self.disc(G_z.detach())
+            d_loss = -torch.mean(self.log_eps(D_x) + self.log_eps(1 - D_G_z))
+            return d_loss
 
     def validation_step(self, data_batch, batch_idx):
         assert batch_idx == 0, "batch_idx should be 0 in validation_step?"
@@ -110,7 +96,7 @@ class Learner(pl.LightningModule):
                 lr=self.lr_disc_init,
                 weight_decay=self.lr_decay,
             )
-            return [opt_g, opt_d], []
+            return opt_d
 
     def train_dataloader(self):
         return self.train_loader

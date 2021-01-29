@@ -5,7 +5,7 @@ import numpy as np
 from torchdyn.models import NeuralDE
 from pytorch_lightning import Trainer
 
-from .math import MMD
+from .math import MMD, gaussian_kernel_log
 from .training import Learner
 from .data import create_dataloader, MyDataset
 from .networks import TanhNetOneLayer, TanhNetTwoLayer, LeakyReluNetTwoLayer
@@ -82,14 +82,11 @@ class GenODE(nn.Module):
         lr: float = 0.005,
         lr_disc: float = 0.005,
         lr_decay: float = 1e-6,
-        mode: str = "mmd",
+        disc=None,
         num_workers: int = 0,
         plot_freq=0,
     ):
-        disc = None
         mmd = MMD(D=self.D, ell2=1.0)
-        if mode == "gan":
-            disc = Discriminator(D=self.D, n_hidden=64)
         ds = MyDataset(z_data)
         train_loader = create_dataloader(ds, batch_size, num_workers, shuffle=True)
         valid_loader = create_dataloader(ds, None, num_workers, shuffle=False)
@@ -139,3 +136,26 @@ class Discriminator(nn.Module):
         a = np.round(val)
         corr = np.sum(a == target)
         return corr / N
+
+
+class ParzenWindow(nn.Module):
+    """Parzen window kernel density estimator."""
+
+    def __init__(self, y):
+        super().__init__()
+        self.log_h = torch.nn.Parameter(torch.tensor(-3).float(), requires_grad=True)
+        self.y = y
+        self.N = y.size(0)
+        self.D = y.size(1)
+
+    def forward(self, x):
+        h = torch.exp(self.log_h)
+        V = h ** self.D
+        phi = 1 / (2 * np.pi * self.D)
+        phi = phi * torch.exp(gaussian_kernel_log(x, self.y, h))
+        return 1 / V * torch.mean(phi, 1)
+
+    def classify_numpy(self, x):
+        x = torch.from_numpy(x).float()
+        val = self(x)
+        return val.detach().cpu().numpy()

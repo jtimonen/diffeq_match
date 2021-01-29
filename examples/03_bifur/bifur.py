@@ -1,16 +1,21 @@
 from dem import sim, plot_sim
-from dem import GenODE
+from dem import GenODE, Discriminator
 import torch
 
 N = 1000
 
 z_data, t_data = sim(3, N, 0.06)
 
-loc = [[1.0, 0.5], [1.0, -1.0]]
-std = [0.05, 0.05]
+t_loc = [[1.0, 0.5], [1.0, -1.0]]
+t_std = [0.05, 0.05]
 
-model = GenODE(loc, std, n_hidden=256)
+model = GenODE(t_loc, t_std, n_hidden=256)
 
 zz = torch.from_numpy(z_data).float()
 
-model.fit(zz, n_epochs=200, lr=0.0005, lr_disc=0.005, plot_freq=1, mode="gan")
+# Create and fit discriminator
+disc = Discriminator(D=model.D)
+disc.fit(zz, plot_freq=100, n_epochs=1000, lr=0.005)
+
+# Create and fit model
+model.fit(zz, plot_freq=10, n_epochs=500, lr=0.005, disc=disc, batch_size=128)

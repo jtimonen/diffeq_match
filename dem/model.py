@@ -30,6 +30,8 @@ class GenODE(nn.Module):
 
     def __init__(
         self,
+        init_loc,
+        init_std,
         terminal_loc,
         terminal_std,
         n_hidden: int = 128,
@@ -40,6 +42,7 @@ class GenODE(nn.Module):
     ):
         super().__init__()
         terminal_loc = np.array(terminal_loc)
+        init_loc = np.array(init_loc)
         D = terminal_loc.shape[1]
         f = TanhNetOneLayer(D, D, n_hidden)
         self.ode = NeuralDE(
@@ -49,16 +52,24 @@ class GenODE(nn.Module):
             Reverser(f), sensitivity=sensitivity, solver=solver, atol=atol, rtol=rtol
         )
         self.D = D
+        self.outdir = os.getcwd()
+
         self.n_terminal = terminal_loc.shape[0]
-        S = self.n_terminal
-        assert len(terminal_std) == S, "terminal_std must have length " + S
         self.terminal_loc = torch.from_numpy(terminal_loc).float()
         self.log_terminal_std = torch.log(torch.tensor(terminal_std).float())
-        self.outdir = os.getcwd()
+
+        self.n_init = init_loc.shape[0]
+        self.init_loc = torch.from_numpy(init_loc).float()
+        self.log_init_std = torch.log(torch.tensor(init_std).float())
 
     @property
     def terminal_std(self):
         sigma = torch.exp(self.log_terminal_std).view(-1, 1)
+        return sigma.repeat(1, self.D)
+
+    @property
+    def init_std(self):
+        sigma = torch.exp(self.log_init_std).view(-1, 1)
         return sigma.repeat(1, self.D)
 
     def draw_terminal(self, N: int):
@@ -72,6 +83,17 @@ class GenODE(nn.Module):
         z = m + s * rand_e
         return z
 
+    def draw_init(self, N: int):
+        rand_e = torch.randn((N, self.D)).float()
+        P = self.n_init
+        M = int(N / P)
+        if M * P != N:
+            raise ValueError("N not divisible by number of initial points")
+        m = self.init_loc.repeat(M, 1)
+        s = self.init_std.repeat(M, 1)
+        z = m + s * rand_e
+        return z
+
     def traj(self, z_init, ts, direction: int = 1):
         if direction == 1:
             return self.ode.trajectory(z_init, ts)
@@ -80,10 +102,10 @@ class GenODE(nn.Module):
         else:
             raise ValueError("direction must be -1 or 1!")
 
-    def forward(self, z_init, direction: int):
-        N = z_init.size(0)
+    def forward(self, z_start, direction: int):
+        N = z_start.size(0)
         ts = torch.linspace(0, 1, N).float()
-        z = self.traj(z_init, ts, direction).diagonal()
+        z = self.traj(z_start, ts, direction).diagonal()
         z = torch.transpose(z, 0, 1)
         return z
 
@@ -159,44 +181,59 @@ class TrainingSetup(pl.LightningModule):
     def generate_fake_data(self, z_data):
         """Returns three torch tensors with shape [N, D]."""
         N = z_data.size(0)
+        z_init_draw = self.model.draw_init(N=N)
         z_term_draw = self.model.draw_terminal(N=N)
-        z_back = self.model(z_term_draw, direction=-1)
 
-        #  rand_e = torch.randn((N, self.D)).float()
-        z0 = (z_back[-1, :]).repeat(N, 1)
-        z_forw = self.model(z0, direction=1)
-        return z_term_draw, z_back, z_forw
+        z_forw = self.model(z_init_draw, direction=1)
+        z_back = self.model(z_term_draw, direction=-1)
+        #  z0 = (z_back[-1, :]).repeat(N, 1)
+        return z_back, z_forw
+
+    def all_mmd(self, z_data, z_forw, z_back):
+        v1 = self.mmd(z_data, z_forw)
+        v2 = self.mmd(z_data, z_back)
+        v3 = self.mmd(z_forw, z_back)
+        return v1, v2, v3
+
+    def loss_terms(self, z_data, z_forw, z_back):
+        D_G_z_f = self.disc(z_back)
+        D_G_z_b = self.disc(z_forw)
+        loss1 = -torch.mean(log_eps(D_G_z_f))
+        loss2 = -torch.mean(log_eps(D_G_z_b))
+        loss3 = torch.log(self.mmd(z_data, z_forw))
+        loss4 = torch.log(self.mmd(z_data, z_back))
+        return loss1, loss2, loss3, loss4
 
     def training_step(self, data_batch, batch_idx):
         z_data = data_batch
-        _, _, z_fake = self.generate_fake_data(z_data)
+        z_back, z_forw = self.generate_fake_data(z_data)
         if self.mode == "mmd":
-            loss = self.mmd(z_data, z_fake)
+            loss = self.mmd(z_data, z_back)
             return loss
         else:
-            D_G_z = self.disc(z_fake)
-            loss = -torch.mean(log_eps(D_G_z)) + torch.log(self.mmd(z_data, z_fake))
+            # TODO: log-sum-exp tricks?
+            lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
+            loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
             return loss
 
     def validation_step(self, data_batch, batch_idx):
         z_data = data_batch
-        D_x = self.disc(z_data)  # classify real data
-        _, z_back, z_forw = self.generate_fake_data(z_data)
-        D_G_z = self.disc(z_back.detach())  # classify fake data
-        loss = -torch.mean(log_eps(D_G_z)) + torch.log(self.mmd(z_data, z_back))
-        val_real = D_x.detach().cpu().numpy().flatten()
-        val_fake = D_G_z.detach().cpu().numpy().flatten()
-        acc = accuracy(val_real, val_fake)
-        mmd = self.mmd(z_back, z_data)
+        z_back, z_forw = self.generate_fake_data(z_data)
+        z_back = z_back.detach()
+        z_forw = z_forw.detach()
+        lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
+        loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
         self.log("valid_loss", loss)
-        self.log("valid_acc", acc)
-        self.log("valid_mmd", mmd)
+        self.log("valid_lt1", lt1)
+        self.log("valid_lt2", lt2)
+        self.log("valid_lt3", lt3)
+        self.log("valid_lt4", lt4)
         idx_epoch = self.current_epoch
         pf = self.plot_freq
         if pf > 0:
             if idx_epoch % pf == 0:
-                self.visualize(z_back, z_forw, z_data, mmd, idx_epoch)
-        return mmd
+                self.visualize(z_back, z_forw, z_data, loss, idx_epoch)
+        return loss
 
     def visualize(self, z_back, z_forw, z_data, loss, idx_epoch):
         outdir = self.outdir

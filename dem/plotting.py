@@ -23,7 +23,7 @@ def plot_match(
     v = model.defunc_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
     loss_str = "{:.5f}".format(loss)
-    title = "epoch " + epoch_str + ", mmd = " + loss_str
+    title = "epoch " + epoch_str + ", valid_loss = " + loss_str
     fn = "fig_" + epoch_str + ".png"
 
     # Create plot
@@ -31,7 +31,7 @@ def plot_match(
     plt.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
     plt.scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
     plt.scatter(z_back[:, 0], z_back[:, 1], marker="x", alpha=0.7)
-    plt.scatter(z_forw[:, 0], z_forw[:, 1], marker="o", color="red", alpha=0.7)
+    plt.scatter(z_forw[:, 0], z_forw[:, 1], marker="x", color="red", alpha=0.7)
     plt.title(title)
     x_min = np.min(z_data) * 1.5
     x_max = np.max(z_data) * 1.5

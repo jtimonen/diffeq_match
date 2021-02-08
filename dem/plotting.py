@@ -16,7 +16,9 @@ def draw_plot(save_name, save_dir=".", **kwargs):
         plt.close()
 
 
-def plot_match(model, disc, z_gen, z_data, idx_epoch, loss, save_dir=".", **kwargs):
+def plot_match(
+    model, disc, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
+):
     u = create_grid_around(z_data, 16)
     v = model.defunc_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
@@ -28,7 +30,8 @@ def plot_match(model, disc, z_gen, z_data, idx_epoch, loss, save_dir=".", **kwar
     plt.figure(figsize=(8, 8))
     plt.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
     plt.scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
-    plt.scatter(z_gen[:, 0], z_gen[:, 1], marker="x", alpha=0.7)
+    plt.scatter(z_back[:, 0], z_back[:, 1], marker="x", alpha=0.7)
+    plt.scatter(z_forw[:, 0], z_forw[:, 1], marker="o", color="red", alpha=0.7)
     plt.title(title)
     x_min = np.min(z_data) * 1.5
     x_max = np.max(z_data) * 1.5

@@ -15,10 +15,17 @@ class TanhNetOneLayer(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(n_input, n_hidden), nn.Tanh(), nn.Linear(n_hidden, n_output)
         )
+        self.sign = 1.0
 
     def forward(self, z: torch.Tensor):
         """Pass the tensor z through the network."""
-        return self.layers(z)
+        return self.sign * self.layers(z)
+
+    def set_sign(self, sign):
+        if abs(sign) != 1:
+            ValueError("sign must be 1 or -1!")
+        print("Setting sign: " + str(self.sign) + " -> " + str(sign))
+        self.sign = float(sign)
 
 
 class TanhNetTwoLayer(nn.Module):

@@ -189,20 +189,15 @@ class TrainingSetup(pl.LightningModule):
         #  z0 = (z_back[-1, :]).repeat(N, 1)
         return z_back, z_forw
 
-    def all_mmd(self, z_data, z_forw, z_back):
-        v1 = self.mmd(z_data, z_forw)
-        v2 = self.mmd(z_data, z_back)
-        v3 = self.mmd(z_forw, z_back)
-        return v1, v2, v3
-
     def loss_terms(self, z_data, z_forw, z_back):
-        D_G_z_f = self.disc(z_back)
-        D_G_z_b = self.disc(z_forw)
-        loss1 = -torch.mean(log_eps(D_G_z_f))
-        loss2 = -torch.mean(log_eps(D_G_z_b))
+        D_G_z_b = self.disc(z_back)
+        D_G_z_f = self.disc(z_forw)
+        loss1 = -torch.mean(log_eps(D_G_z_b))
+        loss2 = torch.log(self.mmd(z_data, z_back))
         loss3 = torch.log(self.mmd(z_data, z_forw))
-        loss4 = torch.log(self.mmd(z_data, z_back))
-        return loss1, loss2, loss3, loss4
+        loss4 = torch.log(self.mmd(z_back, z_forw))
+        loss5 = -torch.mean(log_eps(D_G_z_f))
+        return loss1, loss2, loss3, loss4, loss5
 
     def training_step(self, data_batch, batch_idx):
         z_data = data_batch
@@ -212,8 +207,8 @@ class TrainingSetup(pl.LightningModule):
             return loss
         else:
             # TODO: log-sum-exp tricks?
-            lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
-            loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
+            lt1, lt2, lt3, lt4, lt5 = self.loss_terms(z_data, z_forw, z_back)
+            loss = 0.25 * (lt1 + lt2 + lt3 + lt4 + lt5)
             return loss
 
     def validation_step(self, data_batch, batch_idx):
@@ -221,13 +216,14 @@ class TrainingSetup(pl.LightningModule):
         z_back, z_forw = self.generate_fake_data(z_data)
         z_back = z_back.detach()
         z_forw = z_forw.detach()
-        lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
-        loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
+        lt1, lt2, lt3, lt4, lt5 = self.loss_terms(z_data, z_forw, z_back)
+        loss = 0.25 * (lt1 + lt2 + lt3 + lt4 + lt5)
         self.log("valid_loss", loss)
         self.log("valid_lt1", lt1)
         self.log("valid_lt2", lt2)
         self.log("valid_lt3", lt3)
         self.log("valid_lt4", lt4)
+        self.log("valid_lt4", lt5)
         idx_epoch = self.current_epoch
         pf = self.plot_freq
         if pf > 0:

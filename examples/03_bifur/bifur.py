@@ -20,7 +20,7 @@ zz = torch.from_numpy(z_data).float()
 
 # Create and fit discriminator
 disc = Discriminator(D=model.D)
-disc.fit(zz, plot_freq=100, n_epochs=100, lr=0.005)
+disc.fit(zz, plot_freq=100, n_epochs=800, lr=0.005)
 
 # Create and fit model
 model.fit(zz, plot_freq=10, n_epochs=500, lr=0.005, disc=disc, batch_size=128)

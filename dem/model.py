@@ -6,11 +6,10 @@ from torchdyn.models import NeuralDE
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
 from .plotting import plot_match
-from .math import accuracy
 
 from .math import MMD, log_eps
 from .data import create_dataloader, MyDataset
-from .networks import TanhNetOneLayer
+from .networks import TanhNetOneLayer, TanhNetTwoLayer
 from .callbacks import MyCallback
 
 
@@ -44,7 +43,7 @@ class GenODE(nn.Module):
         terminal_loc = np.array(terminal_loc)
         init_loc = np.array(init_loc)
         D = terminal_loc.shape[1]
-        f = TanhNetOneLayer(D, D, n_hidden)
+        f = TanhNetTwoLayer(D, D, n_hidden)
         self.ode = NeuralDE(
             f, sensitivity=sensitivity, solver=solver, atol=atol, rtol=rtol
         )
@@ -223,7 +222,7 @@ class TrainingSetup(pl.LightningModule):
         self.log("valid_lt2", lt2)
         self.log("valid_lt3", lt3)
         self.log("valid_lt4", lt4)
-        self.log("valid_lt4", lt5)
+        self.log("valid_lt5", lt5)
         idx_epoch = self.current_epoch
         pf = self.plot_freq
         if pf > 0:

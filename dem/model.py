@@ -73,9 +73,12 @@ class GenODE(nn.Module):
         return z
 
     def traj(self, z_init, ts, direction: int = 1):
-        if direction == -1:
+        if direction == 1:
             return self.ode.trajectory(z_init, ts)
-        return self.ode_b.trajectory(z_init, ts)
+        elif direction == -1:
+            return self.ode_b.trajectory(z_init, ts)
+        else:
+            raise ValueError("direction must be -1 or 1!")
 
     def forward(self, z_init, direction: int):
         N = z_init.size(0)

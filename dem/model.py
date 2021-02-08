@@ -33,8 +33,8 @@ class GenODE(nn.Module):
         terminal_loc,
         terminal_std,
         n_hidden: int = 128,
-        atol: float = 1e-6,
-        rtol: float = 1e-6,
+        atol: float = 1e-5,
+        rtol: float = 1e-5,
         sensitivity="adjoint",
         solver="dopri5",
     ):
@@ -166,7 +166,7 @@ class TrainingSetup(pl.LightningModule):
 
     def training_step(self, data_batch, batch_idx):
         z_data = data_batch
-        _, z_fake, _ = self.generate_fake_data(z_data)
+        _, _, z_fake = self.generate_fake_data(z_data)
         if self.mode == "mmd":
             loss = self.mmd(z_data, z_fake)
             return loss

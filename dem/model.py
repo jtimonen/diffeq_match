@@ -33,7 +33,7 @@ class GenODE(nn.Module):
         init_std,
         terminal_loc,
         terminal_std,
-        n_hidden: int = 128,
+        n_hidden: int = 24,
         atol: float = 1e-5,
         rtol: float = 1e-5,
         sensitivity="adjoint",
@@ -180,12 +180,13 @@ class TrainingSetup(pl.LightningModule):
     def generate_fake_data(self, z_data):
         """Returns three torch tensors with shape [N, D]."""
         N = z_data.size(0)
-        z_init_draw = self.model.draw_init(N=N)
         z_term_draw = self.model.draw_terminal(N=N)
-
-        z_forw = self.model(z_init_draw, direction=1)
         z_back = self.model(z_term_draw, direction=-1)
-        #  z0 = (z_back[-1, :]).repeat(N, 1)
+        z0 = (z_back[-1, :]).repeat(N, 1)
+        rand_e = torch.randn((N, self.model.D)).float()
+        s = self.model.init_std.repeat(N, 1)
+        z_init_draw = z0 + s * rand_e
+        z_forw = self.model(z_init_draw, direction=1)
         return z_back, z_forw
 
     def loss_terms(self, z_data, z_forw, z_back):
@@ -194,9 +195,8 @@ class TrainingSetup(pl.LightningModule):
         loss1 = -torch.mean(log_eps(D_G_z_b))
         loss2 = torch.log(self.mmd(z_data, z_back))
         loss3 = torch.log(self.mmd(z_data, z_forw))
-        loss4 = torch.log(self.mmd(z_back, z_forw))
-        loss5 = -torch.mean(log_eps(D_G_z_f))
-        return loss1, loss2, loss3, loss4, loss5
+        loss4 = -torch.mean(log_eps(D_G_z_f))
+        return loss1, loss2, loss3, loss4
 
     def training_step(self, data_batch, batch_idx):
         z_data = data_batch
@@ -206,8 +206,8 @@ class TrainingSetup(pl.LightningModule):
             return loss
         else:
             # TODO: log-sum-exp tricks?
-            lt1, lt2, lt3, lt4, lt5 = self.loss_terms(z_data, z_forw, z_back)
-            loss = 0.25 * (lt1 + lt2 + lt3 + lt4 + lt5)
+            lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
+            loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
             return loss
 
     def validation_step(self, data_batch, batch_idx):
@@ -215,14 +215,13 @@ class TrainingSetup(pl.LightningModule):
         z_back, z_forw = self.generate_fake_data(z_data)
         z_back = z_back.detach()
         z_forw = z_forw.detach()
-        lt1, lt2, lt3, lt4, lt5 = self.loss_terms(z_data, z_forw, z_back)
-        loss = 0.25 * (lt1 + lt2 + lt3 + lt4 + lt5)
+        lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
+        loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
         self.log("valid_loss", loss)
         self.log("valid_lt1", lt1)
         self.log("valid_lt2", lt2)
         self.log("valid_lt3", lt3)
         self.log("valid_lt4", lt4)
-        self.log("valid_lt5", lt5)
         idx_epoch = self.current_epoch
         pf = self.plot_freq
         if pf > 0:

@@ -8,8 +8,11 @@ z_data, t_data = sim(1, N, sigma=0.1)
 # plot_sim(z_data, t_data)
 
 t_loc = [[-1.5, 0.0]]
+i_loc = [[1.5, 0.2]]
 t_std = [0.07]
-model = GenODE(t_loc, t_std, n_hidden=128)
+i_std = t_std
+
+model = GenODE(i_loc, i_std, t_loc, t_std, n_hidden=24)
 
 zz = torch.from_numpy(z_data).float()
 

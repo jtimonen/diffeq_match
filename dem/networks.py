@@ -35,7 +35,7 @@ class TanhNetTwoLayer(nn.Module):
         self.n_input = n_input
         self.n_output = n_output
         self.n_hidden = n_hidden
-        self.log_R = torch.nn.Parameter(torch.tensor(-0.5).float(), requires_grad=True)
+        # self.log_R = torch.nn.Parameter(torch.tensor(-0.5).float(), requires_grad=True)
         self.layers = nn.Sequential(
             nn.Linear(n_input, n_hidden),
             nn.Tanh(),
@@ -47,12 +47,12 @@ class TanhNetTwoLayer(nn.Module):
     def forward(self, z: torch.Tensor):
         """Pass the tensor z through the network."""
         y = self.layers(z)
-        R = torch.exp(self.log_R)
+        # R = torch.exp(self.log_R)
         # theta = y[:, 0]
         # z1 = R * torch.cos(theta)
         # z2 = R * torch.sin(theta)
         # z = torch.vstack((z1, z2)).T
-        return R * func.normalize(y, dim=1)
+        return y  # R * func.normalize(y, dim=1)
 
 
 class LeakyReluNetTwoLayer(nn.Module):

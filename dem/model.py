@@ -7,7 +7,7 @@ from pytorch_lightning import Trainer
 import pytorch_lightning as pl
 from .plotting import plot_match
 
-from .math import MMD, log_eps
+from .math import MMD, log_eps, kde
 from .data import create_dataloader, MyDataset
 from .networks import TanhNetOneLayer, TanhNetTwoLayer
 from .callbacks import MyCallback
@@ -193,9 +193,9 @@ class TrainingSetup(pl.LightningModule):
         D_G_z_b = self.disc(z_back)
         D_G_z_f = self.disc(z_forw)
         loss1 = -torch.mean(log_eps(D_G_z_b))
-        loss2 = torch.log(self.mmd(z_data, z_back))
-        loss3 = torch.log(self.mmd(z_data, z_forw))
-        loss4 = -torch.mean(log_eps(D_G_z_f))
+        loss2 = -torch.mean(log_eps(D_G_z_f))
+        loss3 = -torch.mean(kde(z_data, z_back, 0.02))
+        loss4 = -torch.mean(kde(z_data, z_forw, 0.02))
         return loss1, loss2, loss3, loss4
 
     def training_step(self, data_batch, batch_idx):
@@ -242,10 +242,7 @@ class TrainingSetup(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        opt_g = torch.optim.Adam(
-            self.model.parameters(),
-            lr=self.lr_init,
-        )
+        opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)
         return opt_g
 
     def train_dataloader(self):

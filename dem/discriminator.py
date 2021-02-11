@@ -6,7 +6,7 @@ from pytorch_lightning import Trainer
 
 from .data import create_dataloader, MyDataset
 from .plotting import plot_disc
-from .math import mvrnorm, log_eps, accuracy
+from .math import mvrnorm, log_eps, accuracy, kde
 from .networks import LeakyReluNetTwoLayer
 
 

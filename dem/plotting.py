@@ -2,6 +2,8 @@ from matplotlib import pyplot as plt
 import os
 import numpy as np
 from .utils import create_grid_around
+import torch
+from .math import kde
 
 
 def draw_plot(save_name, save_dir=".", **kwargs):
@@ -63,6 +65,36 @@ def plot_disc(disc, z_fake, z_data, idx_epoch, loss, acc, save_dir=".", **kwargs
         plt.scatter(z_fake[:, 0], z_fake[:, 1], c="red", alpha=0.3)
 
     plt.title(title)
+    x_min = np.min(z_data) * 1.25
+    x_max = np.max(z_data) * 1.25
+    plt.xlim(x_min, x_max)
+    plt.ylim(x_min, x_max)
+    draw_plot(fn, save_dir, **kwargs)
+
+
+def plot_kde(z_data, sigma: float = 0.02, plot_data = True,
+             fn=None, save_dir=".", **kwargs):
+    """Visualize 2d KDE."""
+    S = 60
+    z_data = z_data.cpu().detach().numpy()
+    u = create_grid_around(z_data, S)
+    ut = torch.from_numpy(u).float()
+    z_data = torch.from_numpy(z_data).float()
+    val = kde(ut, z_data, sigma)
+    val = val.cpu().detach().numpy()
+    z_data = z_data.cpu().detach().numpy()
+
+    X = np.reshape(u[:, 0], (S, S))
+    Y = np.reshape(u[:, 1], (S, S))
+    Z = np.reshape(val, (S, S))
+
+    plt.figure(figsize=(7.0, 6.5))
+    plt.contourf(X, Y, Z)
+    plt.colorbar()
+    if plot_data:
+        plt.scatter(z_data[:, 0], z_data[:, 1], c="k", marker=".", alpha=0.3)
+
+    plt.title("log KDE")
     x_min = np.min(z_data) * 1.25
     x_max = np.max(z_data) * 1.25
     plt.xlim(x_min, x_max)

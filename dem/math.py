@@ -4,14 +4,25 @@ from torch.distributions import Normal
 import numpy as np
 
 
-def kde(x_eval: torch.Tensor, x_base: torch.Tensor, sigma):
-    """Returns logarithm of KDE value."""
-    N = x_base.size(0)
-    D = x_base.size(1)
-    t1 = -0.5 * D * np.log(2 * np.pi) - np.log(sigma)
-    t2 = gaussian_kernel_log(x_eval, x_base, sigma ** 2)
-    val = 1.0/N * torch.exp(t1 + t2).sum(dim=1)
-    return torch.log(1e-12 + val)
+class KDE(nn.Module):
+    """KDE using a Gaussian kernel.
+    :param sigma: standard deviation.
+    :type sigma: float
+    """
+
+    def __init__(self, sigma: float):
+        super().__init__()
+        self.sigma = sigma
+        self.eps = 1e-12
+
+    def forward(self, x_eval: torch.Tensor, x_base: torch.Tensor):
+        """Returns logarithm of KDE value."""
+        N = x_base.size(0)
+        D = x_base.size(1)
+        t1 = -0.5 * D * np.log(2 * np.pi) - np.log(self.sigma)
+        t2 = gaussian_kernel_log(x_eval, x_base, self.sigma ** 2)
+        val = 1.0 / N * torch.exp(t1 + t2).sum(dim=1)
+        return torch.log(self.eps + val)
 
 
 def pairwise_squared_distances(x: torch.Tensor, y: torch.Tensor):

@@ -7,7 +7,7 @@ from pytorch_lightning import Trainer
 import pytorch_lightning as pl
 from .plotting import plot_match
 
-from .math import MMD, log_eps, kde
+from .math import KDE
 from .data import create_dataloader, MyDataset
 from .networks import TanhNetOneLayer, TanhNetTwoLayer
 from .callbacks import MyCallback
@@ -38,6 +38,7 @@ class GenODE(nn.Module):
         rtol: float = 1e-5,
         sensitivity="adjoint",
         solver="dopri5",
+        sigma: float = 0.02,
     ):
         super().__init__()
         terminal_loc = np.array(terminal_loc)
@@ -51,6 +52,7 @@ class GenODE(nn.Module):
             Reverser(f), sensitivity=sensitivity, solver=solver, atol=atol, rtol=rtol
         )
         self.D = D
+        self.kde = KDE(sigma=sigma)
         self.outdir = os.getcwd()
 
         self.n_terminal = terminal_loc.shape[0]
@@ -120,16 +122,12 @@ class GenODE(nn.Module):
         batch_size=128,
         n_epochs: int = 400,
         lr: float = 0.005,
-        disc=None,
         plot_freq=0,
     ):
-        mmd = MMD(D=self.D, ell2=1.0)
         learner = TrainingSetup(
             self,
             z_data,
             batch_size,
-            disc,
-            mmd,
             lr,
             plot_freq,
         )
@@ -149,14 +147,11 @@ class TrainingSetup(pl.LightningModule):
         model: nn.Module,
         z_data,
         batch_size: int,
-        disc: nn.Module,
-        mmd: nn.Module,
         lr_init: float,
         plot_freq=0,
         outdir="out",
     ):
         super().__init__()
-        self.mode = "mmd" if (disc is None) else "gan"
         num_workers = 0
         ds = MyDataset(z_data)
         train_loader = create_dataloader(ds, batch_size, num_workers, shuffle=True)
@@ -166,8 +161,6 @@ class TrainingSetup(pl.LightningModule):
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.lr_init = lr_init
-        self.disc = disc
-        self.mmd = mmd
         self.plot_freq = plot_freq
 
         if not os.path.isdir(outdir):
@@ -190,25 +183,18 @@ class TrainingSetup(pl.LightningModule):
         return z_back, z_forw
 
     def loss_terms(self, z_data, z_forw, z_back):
-        D_G_z_b = self.disc(z_back)
-        D_G_z_f = self.disc(z_forw)
-        loss1 = -torch.mean(log_eps(D_G_z_b))
-        loss2 = -torch.mean(log_eps(D_G_z_f))
-        loss3 = -torch.mean(kde(z_data, z_back, 0.02))
-        loss4 = -torch.mean(kde(z_data, z_forw, 0.02))
+        loss1 = -torch.mean(self.model.kde(z_back, z_data))
+        loss2 = -torch.mean(self.model.kde(z_forw, z_data))
+        loss3 = -torch.mean(self.model.kde(z_data, z_back))
+        loss4 = -torch.mean(self.model.kde(z_data, z_forw))
         return loss1, loss2, loss3, loss4
 
     def training_step(self, data_batch, batch_idx):
         z_data = data_batch
         z_back, z_forw = self.generate_fake_data(z_data)
-        if self.mode == "mmd":
-            loss = self.mmd(z_data, z_back)
-            return loss
-        else:
-            # TODO: log-sum-exp tricks?
-            lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
-            loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
-            return loss
+        lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
+        loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
+        return loss
 
     def validation_step(self, data_batch, batch_idx):
         z_data = data_batch
@@ -237,9 +223,7 @@ class TrainingSetup(pl.LightningModule):
         z_forw = z_forw.detach().cpu().numpy()
         z_back = z_back.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
-        plot_match(
-            self.model, self.disc, z_back, z_forw, z_data, idx_epoch, loss, fig_dir
-        )
+        plot_match(self.model, z_back, z_forw, z_data, idx_epoch, loss, fig_dir)
 
     def configure_optimizers(self):
         opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)

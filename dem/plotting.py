@@ -3,7 +3,6 @@ import os
 import numpy as np
 from .utils import create_grid_around
 import torch
-from .math import kde
 
 
 def draw_plot(save_name, save_dir=".", **kwargs):
@@ -18,9 +17,7 @@ def draw_plot(save_name, save_dir=".", **kwargs):
         plt.close()
 
 
-def plot_match(
-    model, disc, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
-):
+def plot_match(model, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     u = create_grid_around(z_data, 16)
     v = model.defunc_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
@@ -72,8 +69,9 @@ def plot_disc(disc, z_fake, z_data, idx_epoch, loss, acc, save_dir=".", **kwargs
     draw_plot(fn, save_dir, **kwargs)
 
 
-def plot_kde(z_data, sigma: float = 0.02, plot_data = True,
-             fn=None, save_dir=".", **kwargs):
+def plot_kde(
+    kde, z_data, sigma: float = 0.02, plot_data=True, fn=None, save_dir=".", **kwargs
+):
     """Visualize 2d KDE."""
     S = 60
     z_data = z_data.cpu().detach().numpy()

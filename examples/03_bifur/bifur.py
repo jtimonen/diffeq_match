@@ -15,14 +15,14 @@ t_std = [0.05, 0.05]
 
 #  plot_sim(z_data, t_data)
 
-model = GenODE(i_loc, i_std, t_loc, t_std, n_hidden=32)
+model = GenODE(i_loc, i_std, t_loc, t_std, n_hidden=64)
 
 zz = torch.from_numpy(z_data).float()
-#plot_kde(zz)
+# plot_kde(zz)
 
 # Create and fit discriminator
-disc = Discriminator(D=model.D)
-disc.fit(zz, plot_freq=100, n_epochs=800, lr=0.005)
+# disc = Discriminator(D=model.D)
+# disc.fit(zz, plot_freq=100, n_epochs=800, lr=0.005)
 
 # Create and fit model
-model.fit(zz, plot_freq=10, n_epochs=500, lr=0.005, disc=disc, batch_size=128)
+model.fit(zz, plot_freq=10, n_epochs=500, lr=0.005, batch_size=256)

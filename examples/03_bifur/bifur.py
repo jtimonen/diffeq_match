@@ -15,7 +15,7 @@ t_std = [0.05, 0.05]
 
 #  plot_sim(z_data, t_data)
 
-model = GenODE(i_loc, i_std, t_loc, t_std, n_hidden=64)
+model = GenODE(i_loc, i_std, t_loc, t_std, n_hidden=64, sigma = 0.04)
 
 zz = torch.from_numpy(z_data).float()
 # plot_kde(zz)
@@ -25,4 +25,4 @@ zz = torch.from_numpy(z_data).float()
 # disc.fit(zz, plot_freq=100, n_epochs=800, lr=0.005)
 
 # Create and fit model
-model.fit(zz, plot_freq=10, n_epochs=500, lr=0.005, batch_size=256)
+model.fit(zz, plot_freq=5, n_epochs=1000, lr=0.005, batch_size=256)

@@ -14,8 +14,10 @@ def sim(idx: int = 1, N: int = 500, sigma: float = 0.1, **sim_kwargs):
         return sim_spiral(N, sigma, **sim_kwargs)
     elif idx == 3:
         return sim_bifur(N, sigma)
+    elif idx == 4:
+        return sim_fork(N, sigma)
     else:
-        raise ValueError("idx must be 1 (line), 2 (spiral) or 3 (bifur)!")
+        raise ValueError("invalid idx!")
 
 
 def sim_curve(N: int, sigma: float):
@@ -59,6 +61,25 @@ def sim_bifur(N: int, sigma: float):
     z = add_noise_and_stack(z1, z2, sigma)
 
     return z, t
+
+
+def sigmoid(x):
+    return 1.0 / (1.0 + np.exp(-x))
+
+
+def sim_fork(N: int, sigma: float):
+    """A simpler bifurcation."""
+    if int(N/3) != N/3:
+        raise ValueError("N must be divisible by 3!")
+    t1 = 1.5*np.linspace(-1.0, 0.0, int(N / 3))
+    t2 = 1.5*np.linspace(0.0, 1.0, int(N / 3))
+    z1 = np.concatenate((t1, t2, t2))
+    x = 8.0*(t2-0.5)
+    y1 = 0.0*t1
+    y2 = 1.5*sigmoid(x)
+    z2 = np.concatenate((y1, y2, -y2))
+    z = add_noise_and_stack(z1, z2, sigma)
+    return z, z1
 
 
 def add_noise_and_stack(z1, z2, sigma):

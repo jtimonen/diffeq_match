@@ -185,7 +185,7 @@ class TrainingSetup(pl.LightningModule):
     def loss_terms(self, z_data, z_forw, z_back):
         loss1 = -torch.mean(self.model.kde(z_back, z_data))
         loss3 = -torch.mean(self.model.kde(z_data, z_back))
-        
+
         loss2 = -torch.mean(self.model.kde(z_forw, z_data))
         loss4 = -torch.mean(self.model.kde(z_data, z_forw))
         return loss1, loss2, loss3, loss4

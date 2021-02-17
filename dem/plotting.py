@@ -17,7 +17,9 @@ def draw_plot(save_name, save_dir=".", **kwargs):
         plt.close()
 
 
-def plot_match(model, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs):
+def plot_state_2d(
+    model, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
+):
     u = create_grid_around(z_data, 20)
     v = model.defunc_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
@@ -70,36 +72,6 @@ def plot_match(model, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **k
     draw_plot(fn, save_dir, **kwargs)
 
 
-def plot_disc(disc, z_fake, z_data, idx_epoch, loss, acc, save_dir=".", **kwargs):
-    """Visualize discriminator output."""
-    epoch_str = "{0:04}".format(idx_epoch)
-    loss_str = "{:.5f}".format(loss)
-    acc_str = "{:.5f}".format(acc)
-    title = "epoch " + epoch_str + ", loss = " + loss_str + ", acc = " + acc_str
-    fn = "cls_" + epoch_str + ".png"
-    S = 30
-    u = create_grid_around(z_data, S)
-    val = disc.classify_numpy(u)
-    X = np.reshape(u[:, 0], (S, S))
-    Y = np.reshape(u[:, 1], (S, S))
-    Z = np.reshape(val, (S, S))
-
-    plt.figure(figsize=(7.0, 6.5))
-    plt.contourf(X, Y, Z)
-    plt.colorbar()
-    if z_data is not None:
-        plt.scatter(z_data[:, 0], z_data[:, 1], c="k", alpha=0.3)
-    if z_fake is not None:
-        plt.scatter(z_fake[:, 0], z_fake[:, 1], c="red", alpha=0.3)
-
-    plt.title(title)
-    x_min = np.min(z_data) * 1.25
-    x_max = np.max(z_data) * 1.25
-    plt.xlim(x_min, x_max)
-    plt.ylim(x_min, x_max)
-    draw_plot(fn, save_dir, **kwargs)
-
-
 def plot_kde(
     kde, z_data, sigma: float = 0.02, plot_data=True, fn=None, save_dir=".", **kwargs
 ):
@@ -129,3 +101,40 @@ def plot_kde(
     plt.xlim(x_min, x_max)
     plt.ylim(x_min, x_max)
     draw_plot(fn, save_dir, **kwargs)
+
+
+def plot_state_3d(
+    model, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
+):
+    fig = plt.figure(figsize=(13, 13))
+    ax1 = fig.add_subplot(2, 2, 1, projection="3d")
+    ax2 = fig.add_subplot(2, 2, 2, projection="3d")
+    ax3 = fig.add_subplot(2, 2, 3, projection="3d")
+
+    ax1.scatter(z_data[:, 0], z_data[:, 1], z_data[:, 2], alpha=0.3)
+    ax1.set_xlim(-2, 2)
+    ax1.set_ylim(-2, 2)
+    ax1.set_zlim(-2, 2)
+
+    ax2.scatter(z_back[:, 0], z_back[:, 1], z_back[:, 2], color="orange", alpha=0.3)
+    ax2.set_xlim(-2, 2)
+    ax2.set_ylim(-2, 2)
+    ax2.set_zlim(-2, 2)
+
+    ax3.scatter(z_forw[:, 0], z_forw[:, 1], z_forw[:, 2], color="red", alpha=0.3)
+    ax3.set_xlim(-2, 2)
+    ax3.set_ylim(-2, 2)
+    ax3.set_zlim(-2, 2)
+
+    epoch_str = "{0:04}".format(idx_epoch)
+    loss_str = "{:.5f}".format(loss)
+    title = "epoch " + epoch_str + ", valid_loss = " + loss_str
+    fn = "fig_" + epoch_str + ".png"
+    ax1.set_title(title)
+    ax2.set_title("backward")
+    ax3.set_title("forward")
+    draw_plot(fn, save_dir, **kwargs)
+
+
+def plot_disc():
+    return NotImplementedError

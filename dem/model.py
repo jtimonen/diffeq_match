@@ -5,7 +5,7 @@ import numpy as np
 from torchdyn.models import NeuralDE
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
-from .plotting import plot_match
+from .plotting import plot_state_2d, plot_state_3d
 
 from .math import KDE
 from .data import create_dataloader, MyDataset
@@ -224,7 +224,12 @@ class TrainingSetup(pl.LightningModule):
         z_forw = z_forw.detach().cpu().numpy()
         z_back = z_back.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
-        plot_match(self.model, z_back, z_forw, z_data, idx_epoch, loss, fig_dir)
+        if self.model.D == 2:
+            plot_state_2d(self.model, z_back, z_forw, z_data, idx_epoch, loss, fig_dir)
+        elif self.model.D == 3:
+            plot_state_3d(self.model, z_back, z_forw, z_data, idx_epoch, loss, fig_dir)
+        else:
+            raise RuntimeError("plotting not implemented for D > 3")
 
     def configure_optimizers(self):
         opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)

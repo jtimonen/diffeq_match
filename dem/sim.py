@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from .plotting import draw_plot
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def sim(idx: int = 1, N: int = 500, sigma: float = 0.1, **sim_kwargs):
@@ -69,14 +70,14 @@ def sigmoid(x):
 
 def sim_fork(N: int, sigma: float):
     """A simpler bifurcation."""
-    if int(N/3) != N/3:
+    if int(N / 3) != N / 3:
         raise ValueError("N must be divisible by 3!")
-    t1 = 1.5*np.linspace(-1.0, 0.0, int(N / 3))
-    t2 = 1.5*np.linspace(0.0, 1.0, int(N / 3))
+    t1 = 1.5 * np.linspace(-1.0, 0.0, int(N / 3))
+    t2 = 1.5 * np.linspace(0.0, 1.0, int(N / 3))
     z1 = np.concatenate((t1, t2, t2))
-    x = 8.0*(t2-0.5)
-    y1 = 0.0*t1
-    y2 = 1.5*sigmoid(x)
+    x = 8.0 * (t2 - 0.5)
+    y1 = 0.0 * t1
+    y2 = 1.5 * sigmoid(x)
     z2 = np.concatenate((y1, y2, -y2))
     z = add_noise_and_stack(z1, z2, sigma)
     return z, z1
@@ -89,10 +90,20 @@ def add_noise_and_stack(z1, z2, sigma):
     return z
 
 
-def plot_sim(z: np.ndarray, c=None, save_name=None, scatter_kwargs=None, **kwargs):
+def plot_sim(z: np.ndarray, c=None, save_name=None, scatter_kwargs=None):
     """Plot latent simulation."""
     if scatter_kwargs is None:
         scatter_kwargs = dict()
+    D = z.shape[1]
+    if D == 2:
+        plot_sim_2d(z, c, save_name, scatter_kwargs)
+    else:
+        plot_sim_3d(z, c, save_name, scatter_kwargs)
+
+
+def plot_sim_2d(z: np.ndarray, c, save_name, scatter_kwargs):
+    """Plot latent simulation."""
+
     if c is None:
         plt.scatter(z[:, 0], z[:, 1], **scatter_kwargs)
     else:
@@ -100,4 +111,18 @@ def plot_sim(z: np.ndarray, c=None, save_name=None, scatter_kwargs=None, **kwarg
         plt.colorbar()
     plt.xlim(-2, 2)
     plt.ylim(-2, 2)
-    draw_plot(save_name, **kwargs)
+    draw_plot(save_name)
+
+
+def plot_sim_3d(z: np.ndarray, c, save_name, scatter_kwargs):
+    """Plot latent simulation."""
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    if c is None:
+        ax.scatter(z[:, 0], z[:, 1], z[:, 2], **scatter_kwargs)
+    else:
+        ax.scatter(z[:, 0], z[:, 1], z[:, 2], c=c, **scatter_kwargs)
+    ax.set_xlim(-2, 2)
+    ax.set_ylim(-2, 2)
+    ax.set_zlim(-2, 2)
+    draw_plot(save_name)

@@ -12,7 +12,7 @@ i_std = 0.05
 t_loc = [[1.5, 1.5], [1.5, -1.5]]
 t_std = [0.05, 0.05]
 
-#plot_sim(z_data, t_data)
+# plot_sim(z_data, t_data)
 
 model = GenODE(i_loc, i_std, t_loc, t_std, n_hidden=64, sigma=0.05)
 zz = torch.from_numpy(z_data).float()

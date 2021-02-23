@@ -19,7 +19,7 @@ def draw_plot(save_name, save_dir=".", **kwargs):
 
 def plot_state_2d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     u = create_grid_around(z_data, 20)
-    v = model.defunc_numpy(u)
+    v = model.f_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
     loss_str = "{:.5f}".format(loss)
     title = "epoch " + epoch_str + ", valid_loss = " + loss_str
@@ -45,18 +45,21 @@ def plot_state_2d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
     z_forw = torch.from_numpy(z_forw).float()
     v1 = model.kde(ut, z_forw)
     v1 = v1.cpu().detach().numpy()
+    v2 = model.g_numpy(u)
 
     X = np.reshape(u[:, 0], (S, S))
     Y = np.reshape(u[:, 1], (S, S))
     Z1 = np.reshape(v1, (S, S))
+    Z2 = np.reshape(v2, (S, S))
 
-    axs[1, 1].contourf(X, Y, Z1)
+    axs[1, 0].contourf(X, Y, Z1)
+    axs[0, 1].contourf(X, Y, Z2)
     axs[1, 0].set_xlim(x_min, x_max)
     axs[1, 0].set_ylim(x_min, x_max)
     axs[1, 1].set_xlim(x_min, x_max)
     axs[1, 1].set_ylim(x_min, x_max)
-    axs[1, 0].set_title("log(KDE) backward")
-    axs[1, 1].set_title("log(KDE) forward")
+    axs[0, 1].set_title("drift")
+    axs[1, 0].set_title("log(KDE) forward")
     draw_plot(fn, save_dir, **kwargs)
 
 

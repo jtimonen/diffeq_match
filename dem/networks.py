@@ -11,7 +11,7 @@ class TanhNetOneLayer(nn.Module):
     def __init__(self, n_input: int, n_output: int, n_hidden: int = 128):
         super().__init__()
         self.n_input = n_input
-        self.n_input = n_output
+        self.n_output = n_output
         self.n_hidden = n_hidden
         self.log_R = torch.nn.Parameter(torch.tensor(-0.5).float(), requires_grad=True)
         self.layers = nn.Sequential(
@@ -23,6 +23,23 @@ class TanhNetOneLayer(nn.Module):
         y = self.layers(z)
         R = torch.exp(self.log_R)
         return R * func.normalize(y, dim=1)
+
+
+class ReluNetOne(nn.Module):
+    """Network with one output node."""
+
+    def __init__(self, n_input: int, n_hidden: int = 128):
+        super().__init__()
+        self.n_input = n_input
+        self.n_hidden = n_hidden
+        self.layers = nn.Sequential(
+            nn.Linear(n_input, n_hidden), nn.ReLU(), nn.Linear(n_hidden, 1)
+        )
+
+    def forward(self, z: torch.Tensor):
+        """Pass the tensor z through the network."""
+        y = self.layers(z)
+        return y
 
 
 class TanhNetTwoLayer(nn.Module):

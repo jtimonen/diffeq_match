@@ -9,7 +9,7 @@ from .plotting import plot_state_2d, plot_state_3d
 
 from .math import KDE
 from .data import create_dataloader, MyDataset
-from .networks import TanhNetOneLayer, TanhNetTwoLayer
+from .networks import ReluNetOne, TanhNetTwoLayer
 from .callbacks import MyCallback
 
 
@@ -28,16 +28,17 @@ class SDE(nn.Module):
     def __init__(self, D, n_hidden):
         super().__init__()
         self.D = D
-        self.net = TanhNetTwoLayer(D, D, n_hidden)
-        self.log_noise = nn.Parameter(torch.tensor(-1.0), requires_grad=True)
+        self.net_f = TanhNetTwoLayer(D, D, n_hidden)
+        self.net_g = ReluNetOne(D, 32)
         self.noise_type = "diagonal"
         self.sde_type = "ito"
 
     def f(self, t, y):
-        return self.net(y)
+        return self.net_f(y)
 
     def g(self, t, y):
-        return torch.ones_like(y) * torch.exp(self.log_noise)
+        log_noise = self.net_g(y)
+        return 0.1 * torch.exp(log_noise) * torch.ones_like(y)
 
 
 class GenModel(nn.Module):
@@ -94,10 +95,16 @@ class GenModel(nn.Module):
         return z
 
     @torch.no_grad()
-    def defunc_numpy(self, z):
+    def f_numpy(self, z):
         z = torch.from_numpy(z).float()
         f = self.sde.f(0, z).cpu().detach().numpy()
         return f
+
+    @torch.no_grad()
+    def g_numpy(self, z):
+        z = torch.from_numpy(z).float()
+        g = self.sde.g(0, z).cpu().detach().numpy()
+        return g[:, 0]
 
     def fit(
         self,
@@ -185,7 +192,6 @@ class TrainingSetup(pl.LightningModule):
         pf = self.plot_freq
         if pf > 0:
             if idx_epoch % pf == 0:
-                print(torch.exp(self.model.sde.log_noise))
                 self.visualize(z_forw, z_data, loss, idx_epoch)
         return loss
 

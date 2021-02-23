@@ -29,7 +29,7 @@ class SDE(nn.Module):
         super().__init__()
         self.D = D
         self.net_f = TanhNetTwoLayer(D, D, n_hidden)
-        self.net_g = ReluNetOne(D, 32)
+        self.net_g = ReluNetOne(D, 64)
         self.noise_type = "diagonal"
         self.sde_type = "ito"
 
@@ -37,8 +37,7 @@ class SDE(nn.Module):
         return self.net_f(y)
 
     def g(self, t, y):
-        log_noise = self.net_g(y)
-        return 0.1 * torch.exp(log_noise) * torch.ones_like(y)
+        return self.net_g(y) * torch.ones_like(y)
 
 
 class GenModel(nn.Module):

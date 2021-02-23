@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import numpy as np
-from torchdyn.models import NeuralDE
+import torchsde
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
 from .plotting import plot_state_2d, plot_state_3d
@@ -24,84 +24,67 @@ class Reverser(nn.Module):
         return -self.f(x)
 
 
-class GenODE(nn.Module):
+class SDE(nn.Module):
+    def __init__(self, D, n_hidden):
+        super().__init__()
+        self.D = D
+        self.net = TanhNetTwoLayer(D, D, n_hidden)
+        self.log_noise = nn.Parameter(torch.tensor(-1.0), requires_grad=True)
+        self.noise_type = "diagonal"
+        self.sde_type = "ito"
+
+    def f(self, t, y):
+        return self.net(y)
+
+    def g(self, t, y):
+        return torch.ones_like(y) * torch.exp(self.log_noise)
+
+
+class GenModel(nn.Module):
     """Main model module."""
 
     def __init__(
         self,
         init_loc,
         init_std,
-        terminal_loc,
-        terminal_std,
         n_hidden: int = 24,
-        atol: float = 1e-5,
-        rtol: float = 1e-5,
-        sensitivity="adjoint",
-        solver="dopri5",
         sigma: float = 0.02,
     ):
         super().__init__()
-        terminal_loc = np.array(terminal_loc)
+        self.noise_type = "diagonal"
+        self.sde_type = "ito"
         init_loc = np.array(init_loc)
-        D = terminal_loc.shape[1]
-        f = TanhNetTwoLayer(D, D, n_hidden)
-        self.ode = NeuralDE(
-            f, sensitivity=sensitivity, solver=solver, atol=atol, rtol=rtol
-        )
-        self.ode_b = NeuralDE(
-            Reverser(f), sensitivity=sensitivity, solver=solver, atol=atol, rtol=rtol
-        )
+        D = len(init_loc)
+        self.sde = SDE(D, n_hidden)
         self.D = D
         self.kde = KDE(sigma=sigma)
         self.outdir = os.getcwd()
 
-        self.n_terminal = terminal_loc.shape[0]
-        self.terminal_loc = torch.from_numpy(terminal_loc).float()
-        self.log_terminal_std = torch.log(torch.tensor(terminal_std).float())
-
-        self.n_init = init_loc.shape[0]
         self.init_loc = torch.from_numpy(init_loc).float()
         self.log_init_std = torch.log(torch.tensor(init_std).float())
-
-    @property
-    def terminal_std(self):
-        sigma = torch.exp(self.log_terminal_std).view(-1, 1)
-        return sigma.repeat(1, self.D)
+        self.n_init = 1
 
     @property
     def init_std(self):
         sigma = torch.exp(self.log_init_std).view(-1, 1)
         return sigma.repeat(1, self.D)
 
-    def draw_terminal(self, N: int):
-        rand_e = torch.randn((N, self.D)).float()
-        P = self.n_terminal
-        M = int(N / P)
-        if M * P != N:
-            raise ValueError("N not divisible by number of terminal points")
-        m = self.terminal_loc.repeat(M, 1)
-        s = self.terminal_std.repeat(M, 1)
-        z = m + s * rand_e
-        return z
-
     def draw_init(self, N: int):
-        rand_e = torch.randn((N, self.D)).float()
         P = self.n_init
         M = int(N / P)
         if M * P != N:
             raise ValueError("N not divisible by number of initial points")
         m = self.init_loc.repeat(M, 1)
-        s = self.init_std.repeat(M, 1)
-        z = m + s * rand_e
-        return z
+        # rand_e = torch.randn((N, self.D)).float()
+        # s = self.init_std.repeat(M, 1)
+        # z = m + s * rand_e
+        return m
 
     def traj(self, z_init, ts, direction: int = 1):
         if direction == 1:
-            return self.ode.trajectory(z_init, ts)
-        elif direction == -1:
-            return self.ode_b.trajectory(z_init, ts)
+            return torchsde.sdeint(self.sde, z_init, ts, method="euler")
         else:
-            raise ValueError("direction must be -1 or 1!")
+            raise ValueError("direction must be 1!")
 
     def forward(self, z_start, direction: int):
         N = z_start.size(0)
@@ -113,7 +96,7 @@ class GenODE(nn.Module):
     @torch.no_grad()
     def defunc_numpy(self, z):
         z = torch.from_numpy(z).float()
-        f = self.ode.defunc(0, z).cpu().detach().numpy()
+        f = self.sde.f(0, z).cpu().detach().numpy()
         return f
 
     def fit(
@@ -173,61 +156,50 @@ class TrainingSetup(pl.LightningModule):
     def generate_fake_data(self, z_data):
         """Returns three torch tensors with shape [N, D]."""
         N = z_data.size(0)
-        z_term_draw = self.model.draw_terminal(N=N)
-        z_back = self.model(z_term_draw, direction=-1)
-        z0 = (z_back[-1, :]).repeat(N, 1)
-        rand_e = torch.randn((N, self.model.D)).float()
-        s = self.model.init_std.repeat(N, 1)
-        z_init_draw = z0 + s * rand_e
+        z_init_draw = self.model.draw_init(N=N)
         z_forw = self.model(z_init_draw, direction=1)
-        return z_back, z_forw
+        return z_forw
 
-    def loss_terms(self, z_data, z_forw, z_back):
-        loss1 = -torch.mean(self.model.kde(z_back, z_data))
-        loss3 = -torch.mean(self.model.kde(z_data, z_back))
-
-        loss2 = -torch.mean(self.model.kde(z_forw, z_data))
-        loss4 = -torch.mean(self.model.kde(z_data, z_forw))
-        return loss1, loss2, loss3, loss4
+    def loss_terms(self, z_data, z_forw):
+        loss1 = -torch.mean(self.model.kde(z_forw, z_data))
+        loss2 = -torch.mean(self.model.kde(z_data, z_forw))
+        return loss1, loss2
 
     def training_step(self, data_batch, batch_idx):
         z_data = data_batch
-        z_back, z_forw = self.generate_fake_data(z_data)
-        lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
-        loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
+        z_forw = self.generate_fake_data(z_data)
+        lt1, lt2 = self.loss_terms(z_data, z_forw)
+        loss = 0.5 * (lt1 + lt2)
         return loss
 
     def validation_step(self, data_batch, batch_idx):
         z_data = data_batch
-        z_back, z_forw = self.generate_fake_data(z_data)
-        z_back = z_back.detach()
+        z_forw = self.generate_fake_data(z_data)
         z_forw = z_forw.detach()
-        lt1, lt2, lt3, lt4 = self.loss_terms(z_data, z_forw, z_back)
-        loss = 0.25 * (lt1 + lt2 + lt3 + lt4)
+        lt1, lt2 = self.loss_terms(z_data, z_forw)
+        loss = 0.5 * (lt1 + lt2)
         self.log("valid_loss", loss)
         self.log("valid_lt1", lt1)
         self.log("valid_lt2", lt2)
-        self.log("valid_lt3", lt3)
-        self.log("valid_lt4", lt4)
         idx_epoch = self.current_epoch
         pf = self.plot_freq
         if pf > 0:
             if idx_epoch % pf == 0:
-                self.visualize(z_back, z_forw, z_data, loss, idx_epoch)
+                print(torch.exp(self.model.sde.log_noise))
+                self.visualize(z_forw, z_data, loss, idx_epoch)
         return loss
 
-    def visualize(self, z_back, z_forw, z_data, loss, idx_epoch):
+    def visualize(self, z_forw, z_data, loss, idx_epoch):
         outdir = self.outdir
         fig_dir = os.path.join(outdir, "figs")
         if not os.path.isdir(fig_dir):
             os.mkdir(fig_dir)
         z_forw = z_forw.detach().cpu().numpy()
-        z_back = z_back.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
         if self.model.D == 2:
-            plot_state_2d(self.model, z_back, z_forw, z_data, idx_epoch, loss, fig_dir)
+            plot_state_2d(self.model, z_forw, z_data, idx_epoch, loss, fig_dir)
         elif self.model.D == 3:
-            plot_state_3d(self.model, z_back, z_forw, z_data, idx_epoch, loss, fig_dir)
+            plot_state_3d(self.model, z_forw, z_data, idx_epoch, loss, fig_dir)
         else:
             raise RuntimeError("plotting not implemented for D > 3")
 

@@ -17,9 +17,7 @@ def draw_plot(save_name, save_dir=".", **kwargs):
         plt.close()
 
 
-def plot_state_2d(
-    model, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
-):
+def plot_state_2d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     u = create_grid_around(z_data, 20)
     v = model.defunc_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
@@ -31,13 +29,8 @@ def plot_state_2d(
     fig, axs = plt.subplots(2, 2, figsize=(14, 14))
     axs[0, 0].quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
     axs[0, 0].scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
-    axs[0, 0].scatter(z_back[:, 0], z_back[:, 1], marker="x", alpha=0.7)
+    axs[0, 0].scatter(z_forw[:, 0], z_forw[:, 1], marker="x", alpha=0.7)
     axs[0, 0].set_title(title)
-
-    axs[0, 1].quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
-    axs[0, 1].scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
-    axs[0, 1].scatter(z_forw[:, 0], z_forw[:, 1], marker="x", color="red", alpha=0.7)
-    axs[0, 1].set_title(title)
 
     x_min = np.min(z_data) * 1.2
     x_max = np.max(z_data) * 1.2
@@ -50,18 +43,13 @@ def plot_state_2d(
     u = create_grid_around(z_data, S)
     ut = torch.from_numpy(u).float()
     z_forw = torch.from_numpy(z_forw).float()
-    z_back = torch.from_numpy(z_back).float()
     v1 = model.kde(ut, z_forw)
-    v2 = model.kde(ut, z_back)
     v1 = v1.cpu().detach().numpy()
-    v2 = v2.cpu().detach().numpy()
 
     X = np.reshape(u[:, 0], (S, S))
     Y = np.reshape(u[:, 1], (S, S))
     Z1 = np.reshape(v1, (S, S))
-    Z2 = np.reshape(v2, (S, S))
 
-    axs[1, 0].contourf(X, Y, Z2)
     axs[1, 1].contourf(X, Y, Z1)
     axs[1, 0].set_xlim(x_min, x_max)
     axs[1, 0].set_ylim(x_min, x_max)
@@ -103,9 +91,7 @@ def plot_kde(
     draw_plot(fn, save_dir, **kwargs)
 
 
-def plot_state_3d(
-    model, z_back, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
-):
+def plot_state_3d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     fig = plt.figure(figsize=(13, 13))
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")
     ax2 = fig.add_subplot(2, 2, 2, projection="3d")
@@ -115,11 +101,6 @@ def plot_state_3d(
     ax1.set_xlim(-2, 2)
     ax1.set_ylim(-2, 2)
     ax1.set_zlim(-2, 2)
-
-    ax2.scatter(z_back[:, 0], z_back[:, 1], z_back[:, 2], color="orange", alpha=0.3)
-    ax2.set_xlim(-2, 2)
-    ax2.set_ylim(-2, 2)
-    ax2.set_zlim(-2, 2)
 
     ax3.scatter(z_forw[:, 0], z_forw[:, 1], z_forw[:, 2], color="red", alpha=0.3)
     ax3.set_xlim(-2, 2)

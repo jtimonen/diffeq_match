@@ -22,7 +22,7 @@ def plot_state_2d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
     v = model.f_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
     loss_str = "{:.5f}".format(loss)
-    title = "epoch " + epoch_str + ", valid_loss = " + loss_str
+    title = "drift, epc = " + epoch_str + ", valid_loss = " + loss_str
     fn = "fig_" + epoch_str + ".png"
 
     # Create plot
@@ -58,7 +58,7 @@ def plot_state_2d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
     axs[1, 0].set_ylim(x_min, x_max)
     axs[1, 1].set_xlim(x_min, x_max)
     axs[1, 1].set_ylim(x_min, x_max)
-    axs[0, 1].set_title("drift")
+    axs[0, 1].set_title("diffusion")
     axs[1, 0].set_title("log(KDE) forward")
     draw_plot(fn, save_dir, **kwargs)
 

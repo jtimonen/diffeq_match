@@ -38,7 +38,7 @@ class ReluNetOne(nn.Module):
 
     def forward(self, z: torch.Tensor):
         """Pass the tensor z through the network."""
-        y = 0.3*torch.sigmoid(self.layers(z))
+        y = 0.3 * torch.sigmoid(self.layers(z))
         return y
 
 

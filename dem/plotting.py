@@ -17,7 +17,9 @@ def draw_plot(save_name, save_dir=".", **kwargs):
         plt.close()
 
 
-def plot_state_2d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs):
+def plot_state_2d(
+    model, z_forw, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs
+):
     u = create_grid_around(z_data, 20)
     v = model.f_numpy(u)
     epoch_str = "{0:04}".format(idx_epoch)
@@ -29,7 +31,7 @@ def plot_state_2d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
     fig, axs = plt.subplots(2, 2, figsize=(14, 14))
     axs[0, 0].quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
     axs[0, 0].scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
-    axs[0, 0].scatter(z_forw[:, 0], z_forw[:, 1], marker="x", alpha=0.7)
+    axs[0, 0].scatter(z_samp[:, 0], z_samp[:, 1], marker="x", alpha=0.7)
     axs[0, 0].set_title(title)
 
     x_min = np.min(z_data) * 1.2
@@ -42,8 +44,8 @@ def plot_state_2d(model, z_forw, z_data, idx_epoch, loss, save_dir=".", **kwargs
     S = 40
     u = create_grid_around(z_data, S)
     ut = torch.from_numpy(u).float()
-    z_forw = torch.from_numpy(z_forw).float()
-    v1 = model.kde(ut, z_forw)
+    z_samp = torch.from_numpy(z_samp).float()
+    v1 = model.kde(ut, z_samp)
     v1 = v1.cpu().detach().numpy()
     v2 = model.g_numpy(u)
 

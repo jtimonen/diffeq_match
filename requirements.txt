@@ -11,5 +11,6 @@ requests>=2.24.0
 flake8>=3.8.4
 black==20.8b1
 torchdyn>=0.2.2.1
+torchdiffeq>=0.2.1
 pytorch-lightning>=1.1.2
 torchsde @ git+https://github.com/google-research/torchsde.git

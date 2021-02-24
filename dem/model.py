@@ -6,7 +6,7 @@ import torchdiffeq
 import torchsde
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
-from .plotting import plot_state_2d, plot_state_3d, plot_sde
+from .plotting import plot_state_2d, plot_state_3d, plot_sde_2d, plot_sde_3d
 
 from .math import KDE
 from .data import create_dataloader, MyDataset
@@ -31,9 +31,16 @@ class VectorField(nn.Module):
         super().__init__()
         self.D = D
         self.net_f = TanhNetTwoLayer(D, D, n_hidden)
-        self.net_g = TanhNetTwoLayer(D, 1, 24)
+        nnn = np.log(0.1) - np.log(0.9)
+        self.logit_noise = torch.nn.Parameter(
+            torch.Tensor([nnn]).float(), requires_grad=True
+        )
         self.noise_type = "diagonal"
         self.sde_type = "ito"
+
+    @property
+    def diffusion_magnitude(self):
+        return 0.3 * torch.sigmoid(self.logit_noise)
 
     def forward(self, t, y):
         return self.f(t, y)
@@ -42,8 +49,7 @@ class VectorField(nn.Module):
         return self.net_f(y)
 
     def g(self, t, y):
-        out = self.net_g(y)
-        g = 0.3 * torch.sigmoid(out)
+        g = self.diffusion_magnitude
         return g * torch.ones_like(y)
 
 
@@ -206,8 +212,7 @@ class TrainingSetup(pl.LightningModule):
         if pf > 0:
             if idx_epoch % pf == 0:
                 self.visualize(z_samp, z_data, loss, idx_epoch)
-                if self.model.D == 2:
-                    self.sde_viz(z_data, idx_epoch)
+                self.sde_viz(z_data, idx_epoch)
         return loss
 
     @torch.no_grad()
@@ -226,13 +231,20 @@ class TrainingSetup(pl.LightningModule):
 
     @torch.no_grad()
     def sde_viz(self, z_data, idx_epoch):
+        print(" ")
+        print(self.model.field.diffusion_magnitude)
         fig_dir = os.path.join(self.outdir, "figs")
         z_init = self.model.draw_init(10)
         ts = torch.linspace(0, 1, 30).float()
         z_traj = torchsde.sdeint(self.model.field, z_init, ts, method="euler")
         z_traj = z_traj.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
-        plot_sde(z_data, z_traj, idx_epoch, save_dir=fig_dir)
+        if self.model.D == 2:
+            plot_sde_2d(z_data, z_traj, idx_epoch, save_dir=fig_dir)
+        elif self.model.D == 3:
+            plot_sde_3d(z_data, z_traj, idx_epoch, save_dir=fig_dir)
+        else:
+            raise RuntimeError("plotting not implemented for D > 3")
 
     def configure_optimizers(self):
         opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)

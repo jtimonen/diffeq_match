@@ -8,7 +8,7 @@ from pytorch_lightning import Trainer
 import pytorch_lightning as pl
 from .plotting import plot_state_2d, plot_state_3d, plot_sde_2d, plot_sde_3d
 
-from .math import KDE
+from .math import KDE, ParamKDE
 from .data import create_dataloader, MyDataset
 from .networks import ReluNetOne, TanhNetTwoLayer
 from .callbacks import MyCallback
@@ -40,7 +40,7 @@ class VectorField(nn.Module):
 
     @property
     def diffusion_magnitude(self):
-        return 0.3 * torch.sigmoid(self.logit_noise)
+        return 5.0 * torch.sigmoid(self.logit_noise)
 
     def forward(self, t, y):
         return self.f(t, y)
@@ -69,7 +69,7 @@ class GenModel(nn.Module):
         self.field = VectorField(D, n_hidden)
         self.field_b = Reverser(self.field)
         self.D = D
-        self.kde = KDE(sigma=sigma)
+        self.kde = ParamKDE(sigma=sigma)
         self.outdir = os.getcwd()
 
         self.init_loc = torch.tensor(init_loc).float()
@@ -152,6 +152,7 @@ class GenModel(nn.Module):
             max_epochs=n_epochs,
             default_root_dir=save_path,
             callbacks=[MyCallback()],
+            checkpoint_callback=checkpoint_callback,
         )
         trainer.fit(learner)
 
@@ -232,7 +233,8 @@ class TrainingSetup(pl.LightningModule):
     @torch.no_grad()
     def sde_viz(self, z_data, idx_epoch):
         print(" ")
-        print(self.model.field.diffusion_magnitude)
+        print("diffusion=", self.model.field.diffusion_magnitude)
+        print("kde sigma=", self.model.kde.sigma)
         fig_dir = os.path.join(self.outdir, "figs")
         z_init = self.model.draw_init(10)
         ts = torch.linspace(0, 1, 30).float()

@@ -45,7 +45,7 @@ class ParamKDE(nn.Module):
         """Returns logarithm of KDE value."""
         N = x_base.size(0)
         D = x_base.size(1)
-        t1 = -0.5 * D * np.log(2 * np.pi) - np.log(self.sigma)
+        t1 = -0.5 * D * np.log(2 * np.pi) - torch.log(self.sigma)
         t2 = gaussian_kernel_log(x_eval, x_base, self.sigma ** 2)
         val = 1.0 / N * torch.exp(t1 + t2).sum(dim=1)
         return torch.log(self.eps + val)

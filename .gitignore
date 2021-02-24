@@ -15,4 +15,5 @@ cov_html/
 *.gif
 *.png
 *.ipynb_checkpoints
+*.ckpt
 

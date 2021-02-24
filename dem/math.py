@@ -13,7 +13,7 @@ class KDE(nn.Module):
     def __init__(self, sigma: float):
         super().__init__()
         self.sigma = sigma
-        self.eps = 1e-12
+        self.eps = 1e-8
 
     def forward(self, x_eval: torch.Tensor, x_base: torch.Tensor):
         """Returns logarithm of KDE value."""
@@ -33,8 +33,9 @@ class ParamKDE(nn.Module):
 
     def __init__(self, sigma: float):
         super().__init__()
-        self.log_sigma = torch.Tensor([sigma], requires_grad=True).float()
-        self.eps = 1e-12
+        sig_t = torch.Tensor([np.log(sigma)]).float()
+        self.log_sigma = nn.Parameter(sig_t, requires_grad=True)
+        self.eps = 1e-8
 
     @property
     def sigma(self):

@@ -98,25 +98,37 @@ def plot_state_3d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs
     fig = plt.figure(figsize=(13, 13))
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")
     ax2 = fig.add_subplot(2, 2, 2, projection="3d")
-    ax3 = fig.add_subplot(2, 2, 3, projection="3d")
+    ax3 = fig.add_subplot(2, 2, 3)
+    ax4 = fig.add_subplot(2, 2, 4)
 
     ax1.scatter(z_data[:, 0], z_data[:, 1], z_data[:, 2], alpha=0.3)
     ax1.set_xlim(-2, 2)
     ax1.set_ylim(-2, 2)
     ax1.set_zlim(-2, 2)
 
-    ax3.scatter(z_samp[:, 0], z_samp[:, 1], z_samp[:, 2], color="orange", alpha=0.3)
+    ax2.scatter(z_samp[:, 0], z_samp[:, 1], z_samp[:, 2], color="orange", alpha=0.3)
+    ax2.set_xlim(-2, 2)
+    ax2.set_ylim(-2, 2)
+    ax2.set_zlim(-2, 2)
+
+    ax3.scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
+    ax3.scatter(z_samp[:, 0], z_samp[:, 1], marker="x", alpha=0.7)
     ax3.set_xlim(-2, 2)
     ax3.set_ylim(-2, 2)
-    ax3.set_zlim(-2, 2)
+
+    ax4.scatter(z_data[:, 1], z_data[:, 2], alpha=0.7)
+    ax4.scatter(z_samp[:, 1], z_samp[:, 2], marker="x", alpha=0.7)
+    ax4.set_xlim(-2, 2)
+    ax4.set_ylim(-2, 2)
 
     epoch_str = "{0:04}".format(idx_epoch)
     loss_str = "{:.5f}".format(loss)
     title = "epoch " + epoch_str + ", valid_loss = " + loss_str
     fn = "fig_" + epoch_str + ".png"
     ax1.set_title(title)
-    ax2.set_title("backward")
-    ax3.set_title("forward")
+    ax2.set_title("forward")
+    ax3.set_title("dim 1 vs. dim 2")
+    ax4.set_title("dim 2 vs. dim 3")
     draw_plot(fn, save_dir, **kwargs)
 
 

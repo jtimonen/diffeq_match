@@ -12,6 +12,7 @@ from .math import KDE
 from .data import create_dataloader, MyDataset
 from .networks import ReluNetOne, TanhNetTwoLayer
 from .callbacks import MyCallback
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 class Reverser(nn.Module):
@@ -132,10 +133,19 @@ class GenModel(nn.Module):
             plot_freq,
         )
         save_path = learner.outdir
+        checkpoint_callback = ModelCheckpoint(
+            filepath=self.outdir,
+            verbose=True,
+            monitor="valid_loss",
+            mode="min",
+            prefix="mod",
+        )
+
         trainer = Trainer(
             min_epochs=n_epochs,
             max_epochs=n_epochs,
             default_root_dir=save_path,
+            checkpoint_callback=checkpoint_callback,
             callbacks=[MyCallback()],
         )
         trainer.fit(learner)
@@ -197,7 +207,8 @@ class TrainingSetup(pl.LightningModule):
         if pf > 0:
             if idx_epoch % pf == 0:
                 self.visualize(z_samp, z_data, loss, idx_epoch)
-                self.sde_viz(z_data, idx_epoch)
+                if self.model.D == 2:
+                    self.sde_viz(z_data, idx_epoch)
         return loss
 
     @torch.no_grad()

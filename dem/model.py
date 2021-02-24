@@ -145,7 +145,6 @@ class GenModel(nn.Module):
             min_epochs=n_epochs,
             max_epochs=n_epochs,
             default_root_dir=save_path,
-            checkpoint_callback=checkpoint_callback,
             callbacks=[MyCallback()],
         )
         trainer.fit(learner)

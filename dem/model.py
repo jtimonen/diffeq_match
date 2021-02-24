@@ -6,7 +6,7 @@ import torchdiffeq
 import torchsde
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
-from .plotting import plot_state_2d, plot_state_3d
+from .plotting import plot_state_2d, plot_state_3d, plot_sde
 
 from .math import KDE
 from .data import create_dataloader, MyDataset
@@ -51,37 +51,36 @@ class GenModel(nn.Module):
 
     def __init__(
         self,
-        term_loc,
-        term_std,
+        init_loc,
+        init_std,
         n_hidden: int = 24,
         sigma: float = 0.02,
     ):
         super().__init__()
-        self.n_init = 1
-        self.n_term = len(term_loc)
-        D = len(term_loc[0])
+        self.n_init = len(init_loc)
+        D = len(init_loc[0])
         self.field = VectorField(D, n_hidden)
         self.field_b = Reverser(self.field)
         self.D = D
         self.kde = KDE(sigma=sigma)
         self.outdir = os.getcwd()
 
-        self.term_loc = torch.tensor(term_loc).float()
-        self.log_term_std = torch.log(torch.tensor(term_std).float())
+        self.init_loc = torch.tensor(init_loc).float()
+        self.log_init_std = torch.log(torch.tensor(init_std).float())
 
     @property
-    def term_std(self):
-        sigma = torch.exp(self.log_term_std).view(-1, 1)
+    def init_std(self):
+        sigma = torch.exp(self.log_init_std).view(-1, 1)
         return sigma.repeat(1, self.D)
 
-    def draw_term(self, N: int):
-        P = self.n_term
+    def draw_init(self, N: int):
+        P = self.n_init
         M = int(N / P)
         if M * P != N:
             raise ValueError("N not divisible by number of terminal points")
-        m = self.term_loc.repeat(M, 1)
+        m = self.init_loc.repeat(M, 1)
         rand_e = torch.randn((N, self.D)).float()
-        s = self.term_std.repeat(M, 1)
+        s = self.init_std.repeat(M, 1)
         z = m + s * rand_e
         return z
 
@@ -90,7 +89,9 @@ class GenModel(nn.Module):
             if sde:
                 return torchsde.sdeint(self.field, z_init, ts, method="euler")
             else:
-                return torchdiffeq.odeint_adjoint(self.field, z_init, ts)
+                return torchdiffeq.odeint_adjoint(
+                    self.field, z_init, ts, atol=1e-5, rtol=1e-4
+                )
         else:
             if sde:
                 raise ValueError("Cannot integrate SDE backward!")
@@ -99,12 +100,9 @@ class GenModel(nn.Module):
 
     def forward(self, N: int):
         ts = torch.linspace(0, 1, N).float()
-        t01 = torch.tensor([0.0, 1.0]).float()
-        z_term = self.draw_term(N)
-        z_init = self.traj(z_term, t01, sde=False, forward=False)[1, :, :]
-        z_forw = self.traj(z_init, ts, sde=True, forward=True)
-        z_samples = torch.transpose(z_forw.diagonal(), 0, 1)
-        return z_init, z_forw, z_samples
+        z_init = self.draw_init(N)
+        z_samp = self.traj(z_init, ts, sde=True, forward=True)
+        return torch.transpose(z_samp.diagonal(), 0, 1)
 
     @torch.no_grad()
     def f_numpy(self, z):
@@ -180,15 +178,15 @@ class TrainingSetup(pl.LightningModule):
     def training_step(self, data_batch, batch_idx):
         z_data = data_batch
         N = z_data.size(0)
-        _, _, z_samples = self.model(N)
-        lt1, lt2 = self.loss_terms(z_data, z_samples)
+        z_samp = self.model(N)
+        lt1, lt2 = self.loss_terms(z_data, z_samp)
         loss = 0.5 * (lt1 + lt2)
         return loss
 
     def validation_step(self, data_batch, batch_idx):
         z_data = data_batch
         N = z_data.size(0)
-        _, z_forw, z_samp = self.model(N)
+        z_samp = self.model(N)
         lt1, lt2 = self.loss_terms(z_data, z_samp)
         loss = 0.5 * (lt1 + lt2)
         self.log("valid_loss", loss)
@@ -198,23 +196,33 @@ class TrainingSetup(pl.LightningModule):
         pf = self.plot_freq
         if pf > 0:
             if idx_epoch % pf == 0:
-                self.visualize(z_forw, z_samp, z_data, loss, idx_epoch)
+                self.visualize(z_samp, z_data, loss, idx_epoch)
+                self.sde_viz(z_data, idx_epoch)
         return loss
 
-    def visualize(self, z_forw, z_samp, z_data, loss, idx_epoch):
-        outdir = self.outdir
-        fig_dir = os.path.join(outdir, "figs")
+    @torch.no_grad()
+    def visualize(self, z_samp, z_data, loss, idx_epoch):
+        fig_dir = os.path.join(self.outdir, "figs")
         if not os.path.isdir(fig_dir):
             os.mkdir(fig_dir)
-        z_forw = z_forw.detach().cpu().numpy()
         z_samp = z_samp.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
         if self.model.D == 2:
-            plot_state_2d(self.model, z_forw, z_samp, z_data, idx_epoch, loss, fig_dir)
+            plot_state_2d(self.model, z_samp, z_data, idx_epoch, loss, fig_dir)
         elif self.model.D == 3:
-            plot_state_3d(self.model, z_forw, z_data, idx_epoch, loss, fig_dir)
+            plot_state_3d(self.model, z_samp, z_data, idx_epoch, loss, fig_dir)
         else:
             raise RuntimeError("plotting not implemented for D > 3")
+
+    @torch.no_grad()
+    def sde_viz(self, z_data, idx_epoch):
+        fig_dir = os.path.join(self.outdir, "figs")
+        z_init = self.model.draw_init(10)
+        ts = torch.linspace(0, 1, 30).float()
+        z_traj = torchsde.sdeint(self.model.field, z_init, ts, method="euler")
+        z_traj = z_traj.detach().cpu().numpy()
+        z_data = z_data.detach().cpu().numpy()
+        plot_sde(z_data, z_traj, idx_epoch, save_dir=fig_dir)
 
     def configure_optimizers(self):
         opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)

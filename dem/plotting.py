@@ -96,30 +96,35 @@ def plot_kde(
 
 def plot_state_3d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     fig = plt.figure(figsize=(13, 13))
+    H = 2.4
+    azim = 171
+    elev = 87
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")
     ax2 = fig.add_subplot(2, 2, 2, projection="3d")
+    ax1.view_init(elev=elev, azim=azim)
+    ax2.view_init(elev=elev, azim=azim)
     ax3 = fig.add_subplot(2, 2, 3)
     ax4 = fig.add_subplot(2, 2, 4)
 
     ax1.scatter(z_data[:, 0], z_data[:, 1], z_data[:, 2], alpha=0.3)
-    ax1.set_xlim(-2, 2)
-    ax1.set_ylim(-2, 2)
-    ax1.set_zlim(-2, 2)
+    ax1.set_xlim(-H, H)
+    ax1.set_ylim(-H, H)
+    ax1.set_zlim(-H, H)
 
     ax2.scatter(z_samp[:, 0], z_samp[:, 1], z_samp[:, 2], color="orange", alpha=0.3)
-    ax2.set_xlim(-2, 2)
-    ax2.set_ylim(-2, 2)
-    ax2.set_zlim(-2, 2)
+    ax2.set_xlim(-H, H)
+    ax2.set_ylim(-H, H)
+    ax2.set_zlim(-H, H)
 
     ax3.scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
     ax3.scatter(z_samp[:, 0], z_samp[:, 1], marker="x", alpha=0.7)
-    ax3.set_xlim(-2, 2)
-    ax3.set_ylim(-2, 2)
+    ax3.set_xlim(-H, H)
+    ax3.set_ylim(-H, H)
 
     ax4.scatter(z_data[:, 1], z_data[:, 2], alpha=0.7)
     ax4.scatter(z_samp[:, 1], z_samp[:, 2], marker="x", alpha=0.7)
-    ax4.set_xlim(-2, 2)
-    ax4.set_ylim(-2, 2)
+    ax4.set_xlim(-H, H)
+    ax4.set_ylim(-H, H)
 
     epoch_str = "{0:04}".format(idx_epoch)
     loss_str = "{:.5f}".format(loss)
@@ -152,27 +157,33 @@ def plot_sde_2d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
 
 def plot_sde_3d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
     fig = plt.figure(figsize=(13, 13))
+    H = 2.4
+    azim = 171
+    elev = 87
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")
     ax2 = fig.add_subplot(2, 2, 2, projection="3d")
+    ax1.view_init(elev=elev, azim=azim)
+    ax2.view_init(elev=elev, azim=azim)
+
     ax3 = fig.add_subplot(2, 2, 3)
     ax4 = fig.add_subplot(2, 2, 4)
     J = z_traj.shape[1]
 
     ax1.scatter(z_data[:, 0], z_data[:, 1], z_data[:, 2], color="black", alpha=0.3)
-    ax1.set_xlim(-2, 2)
-    ax1.set_ylim(-2, 2)
-    ax1.set_zlim(-2, 2)
+    ax1.set_xlim(-H, H)
+    ax1.set_ylim(-H, H)
+    ax1.set_zlim(-H, H)
 
-    ax2.set_xlim(-2, 2)
-    ax2.set_ylim(-2, 2)
-    ax2.set_zlim(-2, 2)
+    ax2.set_xlim(-H, H)
+    ax2.set_ylim(-H, H)
+    ax2.set_zlim(-H, H)
 
     ax3.scatter(z_data[:, 0], z_data[:, 1], color="black", alpha=0.7)
     ax4.scatter(z_data[:, 1], z_data[:, 2], color="black", alpha=0.7)
-    ax3.set_xlim(-2, 2)
-    ax3.set_ylim(-2, 2)
-    ax4.set_xlim(-2, 2)
-    ax4.set_ylim(-2, 2)
+    ax3.set_xlim(-H, H)
+    ax3.set_ylim(-H, H)
+    ax4.set_xlim(-H, H)
+    ax4.set_ylim(-H, H)
     for j in range(J):
         ax2.plot(
             z_traj[:, j, 0], z_traj[:, j, 1], z_traj[:, j, 2], color="red", alpha=0.7

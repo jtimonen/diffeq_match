@@ -16,7 +16,7 @@ i_std = [0.05]
 
 # plot_sim(z_data, t_data)
 
-model = GenModel(i_loc, i_std, n_hidden=64, sigma=0.06)
+model = GenModel(i_loc, i_std, n_hidden=64, sigma=0.2)
 zz = torch.from_numpy(z_data).float()
 
 # Create and fit model

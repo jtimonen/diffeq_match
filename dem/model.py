@@ -69,7 +69,7 @@ class GenModel(nn.Module):
         self.field = VectorField(D, n_hidden)
         self.field_b = Reverser(self.field)
         self.D = D
-        self.kde = ParamKDE(sigma=sigma)
+        self.kde = KDE(sigma=sigma)
         self.outdir = os.getcwd()
 
         self.init_loc = torch.tensor(init_loc).float()
@@ -139,20 +139,19 @@ class GenModel(nn.Module):
             plot_freq,
         )
         save_path = learner.outdir
+
         checkpoint_callback = ModelCheckpoint(
-            filepath=self.outdir,
             verbose=True,
-            monitor="valid_loss",
-            mode="min",
-            prefix="mod",
+            monitor='valid_loss',
+            mode='min',
+            prefix='mod'
         )
 
         trainer = Trainer(
             min_epochs=n_epochs,
             max_epochs=n_epochs,
             default_root_dir=save_path,
-            callbacks=[MyCallback()],
-            checkpoint_callback=checkpoint_callback,
+            callbacks=[MyCallback(), checkpoint_callback],
         )
         trainer.fit(learner)
 
@@ -237,7 +236,7 @@ class TrainingSetup(pl.LightningModule):
         print("kde sigma=", self.model.kde.sigma)
         fig_dir = os.path.join(self.outdir, "figs")
         z_init = self.model.draw_init(10)
-        ts = torch.linspace(0, 1, 30).float()
+        ts = torch.linspace(0, 1, 120).float()
         z_traj = torchsde.sdeint(self.model.field, z_init, ts, method="euler")
         z_traj = z_traj.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()

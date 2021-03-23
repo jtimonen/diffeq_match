@@ -15,7 +15,7 @@ model = GenModel(i_loc, i_std, n_hidden=48, sigma=0.2)
 zz = torch.from_numpy(z_data).float()
 
 # Create and fit model
-model.fit(zz, plot_freq=3, n_epochs=1000, lr=0.005, batch_size=256)
+model.fit(zz, plot_freq=5, n_epochs=500, lr=0.005, batch_size=256)
 
 
 

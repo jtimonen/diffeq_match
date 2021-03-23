@@ -16,4 +16,6 @@ cov_html/
 *.png
 *.ipynb_checkpoints
 *.ckpt
+*.pkl
+*.pt
 

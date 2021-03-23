@@ -40,7 +40,7 @@ class VectorField(nn.Module):
 
     @property
     def diffusion_magnitude(self):
-        return 5.0 * torch.sigmoid(self.logit_noise)
+        return 3.0 * torch.sigmoid(self.logit_noise)
 
     def forward(self, t, y):
         return self.f(t, y)
@@ -61,7 +61,7 @@ class GenModel(nn.Module):
         init_loc,
         init_std,
         n_hidden: int = 24,
-        sigma: float = 0.02,
+        sigma: float = 0.1,
     ):
         super().__init__()
         self.n_init = len(init_loc)
@@ -191,6 +191,7 @@ class TrainingSetup(pl.LightningModule):
         return loss1, loss2
 
     def training_step(self, data_batch, batch_idx):
+        print("* TRAIN STEP...")
         z_data = data_batch
         N = z_data.size(0)
         z_samp = self.model(N)
@@ -199,6 +200,7 @@ class TrainingSetup(pl.LightningModule):
         return loss
 
     def validation_step(self, data_batch, batch_idx):
+        print("* VALID STEP...")
         z_data = data_batch
         N = z_data.size(0)
         z_samp = self.model(N)

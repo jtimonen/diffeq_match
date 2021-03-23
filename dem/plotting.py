@@ -97,8 +97,8 @@ def plot_kde(
 def plot_state_3d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     fig = plt.figure(figsize=(13, 13))
     H = 2.4
-    azim = 171
-    elev = 87
+    azim = -175
+    elev = 5
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")
     ax2 = fig.add_subplot(2, 2, 2, projection="3d")
     ax1.view_init(elev=elev, azim=azim)

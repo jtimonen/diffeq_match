@@ -3,7 +3,38 @@ import os
 import numpy as np
 from .utils import create_grid_around
 import torch
+import seaborn as sns
 
+
+def keys_to_colors(keys):
+    uk = np.unique(keys)
+    n_colors = len(uk)
+    if n_colors <= 10:
+        pal = sns.color_palette("tab10")[0:n_colors]
+    elif n_colors <= 20:
+        pal = sns.color_palette("tab20")[0:n_colors]
+    else:
+        raise RuntimeError("not enough colors to plot > 20 categories!")
+    color_dict = dict(zip(uk, pal))
+    colors = [color_dict[key] for key in keys]
+    return colors
+
+
+def determine_nrows_ncols(nplots: int):
+    """Determine number of rows and columns a grid of subplots.
+    :param nplots: total number of subplots
+    :type nplots: int
+    """
+    if nplots < 4:
+        ncols = nplots
+    elif nplots < 5:
+        ncols = 2
+    elif nplots < 10:
+        ncols = 3
+    else:
+        ncols = 4
+    nrows = int(np.ceil(nplots / ncols))
+    return nrows, ncols
 
 def draw_plot(save_name, save_dir=".", **kwargs):
     """Function to be used always when a plot is to be shown or saved."""
@@ -137,6 +168,51 @@ def plot_state_3d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs
     draw_plot(fn, save_dir, **kwargs)
 
 
+def plot_state_nd(model, z_samp, z_data, idx_epoch, loss, panel_size=None,
+                  save_dir=".",  **kwargs):
+    """Pair plot with all dimension pairs.
+    """
+    alpha = 0.5
+    d = z_data.shape[1]
+    if d > 10:
+        print("Too many pair plots! Skipping.")
+        return
+    nplots = int(d * (d - 1) / 2)
+    if panel_size is None:
+        panel_size = 6.0 if (nplots == 1) else 4.0
+    nrows, ncols = determine_nrows_ncols(nplots)
+    figsize = (panel_size * ncols, panel_size * nrows)
+    fix, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+    counter = 0
+    for i in range(0, d):
+        for j in range(i + 1, d):
+            c = counter % ncols
+            r = int(np.floor(counter / ncols))
+            title = "dim " + str(i + 1) + " vs. dim " + str(j + 1)
+
+            # Scatter plot (and possible quiver)
+            if nplots > 1:
+                axis = ax[r, c] if nrows > 1 else ax[c]
+            else:
+                axis = ax
+            axis.scatter(z_data[:, i], z_data[:, j], alpha=alpha)
+            axis.scatter(z_samp[:, i], z_samp[:, j], alpha=alpha, marker="x")
+            axis.set_title(title)
+            counter += 1
+
+    # Remove extra subplots
+    while counter < nrows * ncols:
+        c = counter % ncols
+        r = int(np.floor(counter / ncols))
+        axis = ax[r, c] if nrows > 1 else ax[c]
+        axis.axis("off")
+        counter += 1
+
+    # save
+    epoch_str = "{0:04}".format(idx_epoch)
+    save_name = "fig_" + epoch_str + ".png"
+    draw_plot(save_name, save_dir, **kwargs)
+
 def plot_disc():
     return NotImplementedError
 
@@ -199,3 +275,53 @@ def plot_sde_3d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
     ax3.set_title("dim 1 vs. dim 2")
     ax4.set_title("dim 2 vs. dim 3")
     draw_plot(fn, save_dir, **kwargs)
+
+
+def plot_sde_nd(z_data, z_traj, idx_epoch, panel_size=None,
+                  save_dir=".", **kwargs):
+    """Pair plot with all dimension pairs.
+    """
+    d = z_data.shape[1]
+    if d > 10:
+        print("Too many pair plots! Skipping.")
+        return
+    nplots = int(d * (d - 1) / 2)
+    if panel_size is None:
+        panel_size = 6.0 if (nplots == 1) else 4.0
+    nrows, ncols = determine_nrows_ncols(nplots)
+    figsize = (panel_size * ncols, panel_size * nrows)
+    fix, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+    counter = 0
+    for i in range(0, d):
+        for j in range(i + 1, d):
+            c = counter % ncols
+            r = int(np.floor(counter / ncols))
+            title = "dim " + str(i + 1) + " vs. dim " + str(j + 1)
+
+            # Scatter plot (and possible quiver)
+            if nplots > 1:
+                axis = ax[r, c] if nrows > 1 else ax[c]
+            else:
+                axis = ax
+            axis.scatter(z_data[:, i], z_data[:, j], alpha=0.3, color="black")
+            n_traj = z_traj.shape[1]
+            for k in range(0, n_traj):
+                zi = z_traj[:, k, i]
+                zj = z_traj[:, k, j]
+                axis.plot(zi, zj, color="red", alpha=0.7)
+                axis.plot(zi[0], zj[0], "rx", alpha=0.05)
+            axis.set_title(title)
+            counter += 1
+
+    # Remove extra subplots
+    while counter < nrows * ncols:
+        c = counter % ncols
+        r = int(np.floor(counter / ncols))
+        axis = ax[r, c] if nrows > 1 else ax[c]
+        axis.axis("off")
+        counter += 1
+
+    # save
+    epoch_str = "{0:04}".format(idx_epoch)
+    save_name = "sde_" + epoch_str + ".png"
+    draw_plot(save_name, save_dir, **kwargs)

@@ -6,7 +6,8 @@ import torchdiffeq
 import torchsde
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
-from .plotting import plot_state_2d, plot_state_3d, plot_sde_2d, plot_sde_3d
+from .plotting import plot_state_2d, plot_state_3d, plot_state_nd,\
+    plot_sde_2d, plot_sde_3d, plot_sde_nd
 
 from .math import KDE, ParamKDE
 from .data import create_dataloader, MyDataset
@@ -191,7 +192,6 @@ class TrainingSetup(pl.LightningModule):
         return loss1, loss2
 
     def training_step(self, data_batch, batch_idx):
-        print("* TRAIN STEP...")
         z_data = data_batch
         N = z_data.size(0)
         z_samp = self.model(N)
@@ -200,7 +200,6 @@ class TrainingSetup(pl.LightningModule):
         return loss
 
     def validation_step(self, data_batch, batch_idx):
-        print("* VALID STEP...")
         z_data = data_batch
         N = z_data.size(0)
         z_samp = self.model(N)
@@ -229,7 +228,7 @@ class TrainingSetup(pl.LightningModule):
         elif self.model.D == 3:
             plot_state_3d(self.model, z_samp, z_data, idx_epoch, loss, fig_dir)
         else:
-            raise RuntimeError("plotting not implemented for D > 3")
+            plot_state_nd(self.model, z_samp, z_data, idx_epoch, loss, None, fig_dir)
 
     @torch.no_grad()
     def sde_viz(self, z_data, idx_epoch):
@@ -247,7 +246,7 @@ class TrainingSetup(pl.LightningModule):
         elif self.model.D == 3:
             plot_sde_3d(z_data, z_traj, idx_epoch, save_dir=fig_dir)
         else:
-            raise RuntimeError("plotting not implemented for D > 3")
+            plot_sde_nd(z_data, z_traj, idx_epoch, save_dir=fig_dir)
 
     def configure_optimizers(self):
         opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)

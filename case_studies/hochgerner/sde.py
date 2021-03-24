@@ -7,7 +7,7 @@ import torch
 import numpy as np
 import os
 
-model_dir = "nl5_D3_G1200_H64_MC20-dentate-gyrus-neurogenesis_hochgerner"
+model_dir = "lin5_D6_G1200_H128_MC20-dentate-gyrus-neurogenesis_hochgerner"
 z_data = np.loadtxt(os.path.join(model_dir, "latent.txt"))
 start_idx = int(np.loadtxt(os.path.join(model_dir, "start_idx.txt")))
 

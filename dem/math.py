@@ -27,13 +27,13 @@ class KDE(nn.Module):
 
 class ParamKDE(nn.Module):
     """KDE using a Gaussian kernel.
-    :param sigma: initial  standard deviation.
-    :type sigma: float
+    :param sigma_init: initial standard deviation.
+    :type sigma_init: float
     """
 
-    def __init__(self, sigma: float):
+    def __init__(self, sigma_init: float):
         super().__init__()
-        sig_t = torch.Tensor([np.log(sigma)]).float()
+        sig_t = torch.Tensor([np.log(sigma_init)]).float()
         self.log_sigma = nn.Parameter(sig_t, requires_grad=True)
         self.eps = 1e-8
 

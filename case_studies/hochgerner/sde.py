@@ -6,7 +6,7 @@ z_data, z0, _, _ = load_data_txt(pdir)
 
 # Create and fit discriminator
 disc = Discriminator(D=2)
-disc.fit(z_data, lr=0.005, plot_freq=20, n_epochs=400)
+disc.fit(z_data, lr=0.005)
 
 # model = GenModel(z0, n_hidden=64, sigma=0.1)
 

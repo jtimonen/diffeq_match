@@ -94,24 +94,22 @@ class DiscriminatorTrainingSetup(pl.LightningModule):
         z_fake = z_data + self.fake_sigma * mvrnorm(z_data, s2)
         return z_fake
 
-    def training_step(self, data_batch, batch_idx):
-        z_data = data_batch
+    def compute_loss(self, z_data):
         D_x = self.disc(z_data)  # classify real data
         G_z = self.generate_fake_data(z_data)
         D_G_z = self.disc(G_z.detach())  # classify fake data
         loss_real = -torch.mean(log_eps(D_x))
         loss_fake = -torch.mean(log_eps(1 - D_G_z))
         loss = 0.5 * (loss_real + loss_fake)
+        return loss, D_x, D_G_z
+
+    def training_step(self, data_batch, batch_idx):
+        loss, _, _ = self.compute_loss(data_batch)
         return loss
 
     def validation_step(self, data_batch, batch_idx):
         z_data = data_batch
-        D_x = self.disc(z_data)  # classify real data
-        z_fake = self.generate_fake_data(z_data)
-        D_G_z = self.disc(z_fake.detach())  # classify fake data
-        loss_real = -torch.mean(log_eps(D_x))
-        loss_fake = -torch.mean(log_eps(1 - D_G_z))
-        loss = 0.5 * (loss_real + loss_fake)
+        loss, D_x, D_G_z = self.compute_loss(z_data)
         val_real = D_x.detach().cpu().numpy().flatten()
         val_fake = D_G_z.detach().cpu().numpy().flatten()
         acc = accuracy(val_real, val_fake)

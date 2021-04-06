@@ -16,9 +16,9 @@ from .plotting import (
 )
 
 from .discriminator import Discriminator
-from .math import KDE, ParamKDE
+from .math import log_eps
 from .data import create_dataloader, MyDataset
-from .networks import ReluNetOne, TanhNetTwoLayer
+from .networks import TanhNetTwoLayer
 from .callbacks import MyCallback
 from pytorch_lightning.callbacks import ModelCheckpoint
 
@@ -39,16 +39,15 @@ class VectorField(nn.Module):
         super().__init__()
         self.D = D
         self.net_f = TanhNetTwoLayer(D, D, n_hidden)
-        nnn = np.log(0.1) - np.log(0.9)
-        self.logit_noise = torch.nn.Parameter(
-            torch.Tensor([nnn]).float(), requires_grad=True
+        self.log_noise = torch.nn.Parameter(
+            torch.Tensor([np.log(0.1)]).float(), requires_grad=True
         )
         self.noise_type = "diagonal"
         self.sde_type = "ito"
 
     @property
     def diffusion_magnitude(self):
-        return 3.0 * torch.sigmoid(self.logit_noise)
+        return torch.exp(self.log_noise)
 
     def forward(self, t, y):
         return self.f(t, y)
@@ -67,19 +66,13 @@ class GenModel(nn.Module):
     def __init__(
         self,
         z0,
-        disc: Discriminator,
         n_hidden: int = 24,
-        sigma: float = 0.1,
     ):
         super().__init__()
         self.n_init = z0.shape[0]
         self.D = z0.shape[1]
-        self.disc = disc
-        if disc.D != self.D:
-            raise RuntimeError("Discriminator dimension incompatible with shape of z0")
         self.field = VectorField(self.D, n_hidden)
         self.field_b = Reverser(self.field)
-        self.kde = KDE(sigma=sigma)
         self.outdir = os.getcwd()
         self.z0 = torch.tensor(z0).float()
         print("Created model with D =", self.D, ", n_init =", self.n_init)
@@ -123,6 +116,7 @@ class GenModel(nn.Module):
     def fit(
         self,
         z_data,
+        disc: Discriminator,
         batch_size=128,
         n_epochs: int = 400,
         lr: float = 0.005,
@@ -132,6 +126,7 @@ class GenModel(nn.Module):
         learner = TrainingSetup(
             self,
             z_data,
+            disc,
             batch_size,
             lr,
             plot_freq,
@@ -156,6 +151,7 @@ class TrainingSetup(pl.LightningModule):
         self,
         model: nn.Module,
         z_data,
+        disc: Discriminator,
         batch_size: int,
         lr_init: float,
         plot_freq=0,
@@ -168,6 +164,9 @@ class TrainingSetup(pl.LightningModule):
         valid_loader = create_dataloader(ds, None, num_workers, shuffle=False)
         self.N = len(train_loader.dataset)
         self.model = model
+        self.disc = disc
+        if disc.D != self.model.D:
+            raise RuntimeError("Discriminator dimension incompatible with model!")
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.lr_init = lr_init
@@ -180,28 +179,52 @@ class TrainingSetup(pl.LightningModule):
     def forward(self, n_draws: int):
         return self.model(n_draws)
 
-    def loss_terms(self, z_data, z_samples):
-        loss1 = -torch.mean(self.model.kde(z_samples, z_data))
-        loss2 = -torch.mean(self.model.kde(z_data, z_samples))
-        return loss1, loss2
+    # Old KDE thing
+    # def loss_terms(self, z_data, z_samples):
+    #    loss1 = -torch.mean(self.model.kde(z_samples, z_data))
+    #    loss2 = -torch.mean(self.model.kde(z_data, z_samples))
+    #    return loss1, loss2
 
-    def training_step(self, data_batch, batch_idx):
+    def loss_generator(self, z_samples):
+        """Rather than training G to minimize log(1 − D(G(z))), we can train G to
+        maximize log D(G(z)). This objective function results in the same fixed point
+        of the dynamics of G and D but provides much stronger gradients early in
+        learning. (Goodfellow et al., 2014)
+        """
+        G_z = z_samples
+        D_G_z = self.disc(G_z)  # classify fake data
+        loss_fake = -torch.mean(log_eps(D_G_z))
+        return loss_fake
+
+    def loss_discriminator(self, z_samples, z_data):
+        """Discriminator loss."""
+        D_x = self.disc(z_data)  # classify real data
+        G_z = z_samples
+        D_G_z = self.disc(G_z.detach())  # classify fake data
+        loss_real = -torch.mean(log_eps(D_x))
+        loss_fake = -torch.mean(log_eps(1 - D_G_z))
+        loss = 0.5 * (loss_real + loss_fake)
+        return loss
+
+    def training_step(self, data_batch, batch_idx, optimizer_idx):
         z_data = data_batch
         N = z_data.size(0)
-        z_samp = self.model(N)
-        lt1, lt2 = self.loss_terms(z_data, z_samp)
-        loss = 0.5 * (lt1 + lt2)
+        z_fake = self.model(N)  # generate fake data
+
+        if optimizer_idx == 0:
+            loss = self.loss_generator(z_fake)
+        elif optimizer_idx == 1:
+            loss = self.loss_discriminator(z_fake, z_data)
+        else:
+            raise RuntimeError("optimizer_idx must be 0 or 1!")
         return loss
 
     def validation_step(self, data_batch, batch_idx):
         z_data = data_batch
         N = z_data.size(0)
-        z_samp = self.model(N)
-        lt1, lt2 = self.loss_terms(z_data, z_samp)
-        loss = 0.5 * (lt1 + lt2)
+        z_samp = self.model(N)  # generate fake data
+        loss = self.loss_generator(z_samp)
         self.log("valid_loss", loss)
-        self.log("valid_lt1", lt1)
-        self.log("valid_lt2", lt2)
         idx_epoch = self.current_epoch
         pf = self.plot_freq
         if pf > 0:
@@ -228,10 +251,11 @@ class TrainingSetup(pl.LightningModule):
     def sde_viz(self, z_data, idx_epoch):
         print(" ")
         print("diffusion=", self.model.field.diffusion_magnitude)
-        print("kde sigma=", self.model.kde.sigma)
+        N_TRAJ = 30  # number of trajectories
+        L_TRAJ = 100  # number of points per trajectory
         fig_dir = os.path.join(self.outdir, "figs")
-        z_init = self.model.draw_init(10)
-        ts = torch.linspace(0, 1, 120).float()
+        z_init = self.model.draw_init(N_TRAJ)
+        ts = torch.linspace(0, 1, L_TRAJ).float()
         z_traj = torchsde.sdeint(self.model.field, z_init, ts, method="euler")
         z_traj = z_traj.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
@@ -244,7 +268,8 @@ class TrainingSetup(pl.LightningModule):
 
     def configure_optimizers(self):
         opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)
-        return opt_g
+        opt_d = torch.optim.Adam(self.disc.parameters(), lr=self.lr_init)
+        return opt_g, opt_d
 
     def train_dataloader(self):
         return self.train_loader

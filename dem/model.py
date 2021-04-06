@@ -6,9 +6,16 @@ import torchdiffeq
 import torchsde
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
-from .plotting import plot_state_2d, plot_state_3d, plot_state_nd,\
-    plot_sde_2d, plot_sde_3d, plot_sde_nd
+from .plotting import (
+    plot_state_2d,
+    plot_state_3d,
+    plot_state_nd,
+    plot_sde_2d,
+    plot_sde_3d,
+    plot_sde_nd,
+)
 
+from .discriminator import Discriminator
 from .math import KDE, ParamKDE
 from .data import create_dataloader, MyDataset
 from .networks import ReluNetOne, TanhNetTwoLayer
@@ -59,38 +66,27 @@ class GenModel(nn.Module):
 
     def __init__(
         self,
-        init_loc,
-        init_std,
+        z0,
+        disc: Discriminator,
         n_hidden: int = 24,
         sigma: float = 0.1,
     ):
         super().__init__()
-        self.n_init = len(init_loc)
-        D = len(init_loc[0])
-        self.field = VectorField(D, n_hidden)
+        self.n_init = z0.shape[0]
+        self.D = z0.shape[1]
+        self.disc = disc
+        if disc.D != self.D:
+            raise RuntimeError("Discriminator dimension incompatible with shape of z0")
+        self.field = VectorField(self.D, n_hidden)
         self.field_b = Reverser(self.field)
-        self.D = D
         self.kde = KDE(sigma=sigma)
         self.outdir = os.getcwd()
-
-        self.init_loc = torch.tensor(init_loc).float()
-        self.log_init_std = torch.log(torch.tensor(init_std).float())
-
-    @property
-    def init_std(self):
-        sigma = torch.exp(self.log_init_std).view(-1, 1)
-        return sigma.repeat(1, self.D)
+        self.z0 = torch.tensor(z0).float()
+        print("Created model with D =", self.D, ", n_init =", self.n_init)
 
     def draw_init(self, N: int):
-        P = self.n_init
-        M = int(N / P)
-        if M * P != N:
-            raise ValueError("N not divisible by number of terminal points")
-        m = self.init_loc.repeat(M, 1)
-        rand_e = torch.randn((N, self.D)).float()
-        s = self.init_std.repeat(M, 1)
-        z = m + s * rand_e
-        return z
+        idx = np.random.choice(self.n_init, size=N, replace=True)
+        return self.z0[idx, :]
 
     def traj(self, z_init, ts, sde: bool = False, forward: bool = True):
         if forward:
@@ -132,6 +128,7 @@ class GenModel(nn.Module):
         lr: float = 0.005,
         plot_freq=0,
     ):
+        z_data = torch.from_numpy(z_data).float()
         learner = TrainingSetup(
             self,
             z_data,
@@ -142,10 +139,7 @@ class GenModel(nn.Module):
         save_path = learner.outdir
 
         checkpoint_callback = ModelCheckpoint(
-            verbose=True,
-            monitor='valid_loss',
-            mode='min',
-            prefix='mod'
+            verbose=True, monitor="valid_loss", mode="min", prefix="mod"
         )
 
         trainer = Trainer(

@@ -1,11 +1,15 @@
 import os
 import torch
 import torch.nn as nn
+import numpy as np
+from matplotlib import pyplot as plt
+from .utils import create_grid_around
+
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 
 from .data import create_dataloader, MyDataset
-from .plotting import plot_disc
+from .plotting import draw_plot
 from .math import mvrnorm, log_eps, accuracy
 from .networks import LeakyReluNetTwoLayer
 
@@ -31,17 +35,20 @@ class Discriminator(nn.Module):
     def fit(
         self,
         z_data,
+        fake_sigma: float = 0.5,
         batch_size: int = 128,
         n_epochs: int = 400,
         lr: float = 0.005,
         plot_freq=0,
     ):
+        z_data = torch.from_numpy(z_data).float()
         learner = DiscriminatorTrainingSetup(
             self,
-            z_data,
-            lr,
-            batch_size,
-            plot_freq,
+            z_data=z_data,
+            fake_sigma=fake_sigma,
+            lr_init=lr,
+            batch_size=batch_size,
+            plot_freq=plot_freq,
         )
         save_path = learner.outdir
         trainer = Trainer(
@@ -59,6 +66,7 @@ class DiscriminatorTrainingSetup(pl.LightningModule):
         self,
         disc: nn.Module,
         z_data,
+        fake_sigma: float,
         lr_init: float,
         batch_size: int,
         plot_freq: int,
@@ -75,7 +83,7 @@ class DiscriminatorTrainingSetup(pl.LightningModule):
         self.disc = disc
         self.lr_init = lr_init
         self.plot_freq = plot_freq
-        self.sigma = 0.5
+        self.fake_sigma = fake_sigma
 
         if not os.path.isdir(outdir):
             os.mkdir(outdir)
@@ -83,7 +91,7 @@ class DiscriminatorTrainingSetup(pl.LightningModule):
 
     def generate_fake_data(self, z_data):
         s2 = torch.ones_like(z_data)
-        z_fake = z_data + self.sigma * mvrnorm(z_data, s2)
+        z_fake = z_data + self.fake_sigma * mvrnorm(z_data, s2)
         return z_fake
 
     def training_step(self, data_batch, batch_idx):
@@ -123,7 +131,10 @@ class DiscriminatorTrainingSetup(pl.LightningModule):
             os.mkdir(fig_dir)
         z_fake = None
         z_data = z_data.detach().cpu().numpy()
-        plot_disc(self.disc, z_fake, z_data, idx_epoch, loss, acc, fig_dir)
+        if self.disc.D == 2:
+            plot_disc_2d(self.disc, z_fake, z_data, idx_epoch, loss, acc, fig_dir)
+        else:
+            raise RuntimeError("Plotting implemented only for D=2")
 
     def configure_optimizers(self):
         opt = torch.optim.Adam(
@@ -137,3 +148,33 @@ class DiscriminatorTrainingSetup(pl.LightningModule):
 
     def val_dataloader(self):
         return self.valid_loader
+
+
+def plot_disc_2d(disc, z_fake, z_data, idx_epoch, loss, acc, save_dir=".", **kwargs):
+    """Visualize discriminator output."""
+    epoch_str = "{0:04}".format(idx_epoch)
+    loss_str = "{:.5f}".format(loss)
+    acc_str = "{:.5f}".format(acc)
+    title = "epoch " + epoch_str + ", loss = " + loss_str + ", acc = " + acc_str
+    fn = "cls_" + epoch_str + ".png"
+    S = 30
+    u = create_grid_around(z_data, S)
+    val = disc.classify_numpy(u)
+    X = np.reshape(u[:, 0], (S, S))
+    Y = np.reshape(u[:, 1], (S, S))
+    Z = np.reshape(val, (S, S))
+
+    plt.figure(figsize=(7.0, 6.5))
+    plt.contourf(X, Y, Z)
+    plt.colorbar()
+    if z_data is not None:
+        plt.scatter(z_data[:, 0], z_data[:, 1], c="red", marker="x", alpha=0.3)
+    if z_fake is not None:
+        plt.scatter(z_fake[:, 0], z_fake[:, 1], c="orange", alpha=0.3)
+
+    plt.title(title)
+    x_min = np.min(z_data) * 1.25
+    x_max = np.max(z_data) * 1.25
+    plt.xlim(x_min, x_max)
+    plt.ylim(x_min, x_max)
+    draw_plot(fn, save_dir, **kwargs)

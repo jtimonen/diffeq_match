@@ -36,6 +36,7 @@ def determine_nrows_ncols(nplots: int):
     nrows = int(np.ceil(nplots / ncols))
     return nrows, ncols
 
+
 def draw_plot(save_name, save_dir=".", **kwargs):
     """Function to be used always when a plot is to be shown or saved."""
     if save_name is None:
@@ -168,10 +169,10 @@ def plot_state_3d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs
     draw_plot(fn, save_dir, **kwargs)
 
 
-def plot_state_nd(model, z_samp, z_data, idx_epoch, loss, panel_size=None,
-                  save_dir=".",  **kwargs):
-    """Pair plot with all dimension pairs.
-    """
+def plot_state_nd(
+    model, z_samp, z_data, idx_epoch, loss, panel_size=None, save_dir=".", **kwargs
+):
+    """Pair plot with all dimension pairs."""
     alpha = 0.5
     d = z_data.shape[1]
     if d > 10:
@@ -212,9 +213,6 @@ def plot_state_nd(model, z_samp, z_data, idx_epoch, loss, panel_size=None,
     epoch_str = "{0:04}".format(idx_epoch)
     save_name = "fig_" + epoch_str + ".png"
     draw_plot(save_name, save_dir, **kwargs)
-
-def plot_disc():
-    return NotImplementedError
 
 
 def plot_sde_2d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
@@ -277,10 +275,8 @@ def plot_sde_3d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
     draw_plot(fn, save_dir, **kwargs)
 
 
-def plot_sde_nd(z_data, z_traj, idx_epoch, panel_size=None,
-                  save_dir=".", **kwargs):
-    """Pair plot with all dimension pairs.
-    """
+def plot_sde_nd(z_data, z_traj, idx_epoch, panel_size=None, save_dir=".", **kwargs):
+    """Pair plot with all dimension pairs."""
     d = z_data.shape[1]
     if d > 10:
         print("Too many pair plots! Skipping.")

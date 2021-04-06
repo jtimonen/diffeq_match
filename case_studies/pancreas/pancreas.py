@@ -1,6 +1,7 @@
 import scanpy as sc
-#fp = "/Users/juhotimonen/Work/research/SC/single-cell-data/pancreas/data/Pancreas/endocrinogenesis_day15.h5ad"
-#adata = sc.read(fp)
+
+# fp = "/Users/juhotimonen/Work/research/SC/single-cell-data/pancreas/data/Pancreas/endocrinogenesis_day15.h5ad"
+# adata = sc.read(fp)
 
 from dem import GenModel
 import torch
@@ -16,6 +17,3 @@ zz = torch.from_numpy(z_data).float()
 
 # Create and fit model
 model.fit(zz, plot_freq=5, n_epochs=500, lr=0.005, batch_size=256)
-
-
-

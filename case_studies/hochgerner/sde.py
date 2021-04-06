@@ -1,26 +1,14 @@
-import scanpy as sc
-#fp = "/Users/juhotimonen/Work/research/SC/single-cell-data/pancreas/data/Pancreas/endocrinogenesis_day15.h5ad"
-#adata = sc.read(fp)
+from dem import load_data_txt, Discriminator, GenModel
 
-from dem import GenModel
-import torch
-import numpy as np
-import os
+# Load data
+pdir = "nl19_D2_G2000_H128_MC20-real--silver--dentate-gyrus-neurogenesis_hochgerner"
+z_data, z0, _, _ = load_data_txt(pdir)
 
-model_dir = "nl19_D2_G2000_H128_MC20-real--silver--dentate-gyrus-neurogenesis_hochgerner"
-z_data = np.loadtxt(os.path.join(model_dir, "latent.txt"))
-start_idx = int(np.loadtxt(os.path.join(model_dir, "start_idx.txt")))
+# Create and fit discriminator
+disc = Discriminator(D=2)
+disc.fit(z_data, lr=0.005, plot_freq=20, n_epochs=400)
 
-
-i_loc = np.array(z_data[start_idx, :]).reshape((1, -1))
-i_std = [0.1]
-print("i_loc:", i_loc)
-
-model = GenModel(i_loc, i_std, n_hidden=64, sigma=0.2)
-zz = torch.from_numpy(z_data).float()
+# model = GenModel(z0, n_hidden=64, sigma=0.1)
 
 # Create and fit model
-model.fit(zz, plot_freq=5, n_epochs=60, lr=0.005, batch_size=250)
-
-
-
+# model.fit(z_data, plot_freq=5, n_epochs=60, lr=0.005, batch_size=250)

@@ -3,6 +3,7 @@ import os
 import numpy as np
 from .utils import create_grid_around
 import seaborn as sns
+import torch
 
 
 def keys_to_colors(keys):
@@ -57,15 +58,42 @@ def plot_state_2d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs
     fn = "fig_" + epoch_str + ".png"
 
     # Create plot
-    fig, axs = plt.subplots(1, 1, figsize=(7, 7))
-    axs.quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
-    axs.scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
-    axs.scatter(z_samp[:, 0], z_samp[:, 1], marker="x", alpha=0.7)
-    axs.set_title(title)
+    fig, axs = plt.subplots(2, 2, figsize=(14, 14))
+    axs[0, 0].quiver(u[:, 0], u[:, 1], v[:, 0], v[:, 1], alpha=0.5)
+    axs[0, 0].scatter(z_data[:, 0], z_data[:, 1], alpha=0.7)
+    axs[0, 0].scatter(z_samp[:, 0], z_samp[:, 1], marker="x", alpha=0.7)
+    axs[0, 0].set_title(title)
 
-    x_min = np.min(z_data) * 1.2
-    x_max = np.max(z_data) * 1.2
-    axs.set_xlim(x_min, x_max)
+    x_min = np.min(u[:, 0])
+    x_max = np.max(u[:, 0])
+    y_min = np.min(u[:, 1])
+    y_max = np.max(u[:, 1])
+    axs[0, 0].set_xlim(x_min, x_max)
+    axs[0, 0].set_ylim(y_min, y_max)
+    axs[0, 1].set_xlim(x_min, x_max)
+    axs[0, 1].set_ylim(y_min, y_max)
+
+    S = 40
+    u = create_grid_around(z_data, S)
+    ut = torch.from_numpy(u).float()
+    z_samp = torch.from_numpy(z_samp).float()
+    v1 = model.kde(ut, z_samp)
+    v1 = v1.cpu().detach().numpy()
+    v2 = model.g_numpy(u)
+
+    X = np.reshape(u[:, 0], (S, S))
+    Y = np.reshape(u[:, 1], (S, S))
+    Z1 = np.reshape(v1, (S, S))
+    Z2 = np.reshape(v2, (S, S))
+
+    axs[1, 0].contourf(X, Y, Z1)
+    axs[0, 1].contourf(X, Y, Z2)
+    axs[1, 0].set_xlim(x_min, x_max)
+    axs[1, 0].set_ylim(y_min, y_max)
+    axs[1, 1].set_xlim(x_min, x_max)
+    axs[1, 1].set_ylim(y_min, y_max)
+    axs[0, 1].set_title("diffusion")
+    axs[1, 0].set_title("log(KDE) forward")
     draw_plot(fn, save_dir, **kwargs)
 
 

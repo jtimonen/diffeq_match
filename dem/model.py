@@ -39,11 +39,10 @@ class VectorField(nn.Module):
         super().__init__()
         self.D = D
         self.net_f = TanhNetTwoLayer(D, D, n_hidden)
-        self.log_noise = torch.nn.Parameter(
-            torch.Tensor([np.log(0.1)]).float(), requires_grad=True
-        )
         self.noise_type = "diagonal"
         self.sde_type = "ito"
+        ln = torch.Tensor([np.log(0.2)]).float()
+        self.log_noise = nn.Parameter(ln, requires_grad=True)
 
     @property
     def diffusion_magnitude(self):
@@ -249,8 +248,8 @@ class TrainingSetup(pl.LightningModule):
     @torch.no_grad()
     def sde_viz(self, z_data, idx_epoch):
         print(" ")
-        print("diffusion=", self.model.field.diffusion_magnitude)
-        print("kde_sigma=", self.model.kde.sigma)
+        print("kde_sigma =", self.model.kde.sigma)
+        print("diffusion_magnitude =", self.model.field.diffusion_magnitude)
         N_TRAJ = 30  # number of trajectories
         L_TRAJ = 100  # number of points per trajectory
         fig_dir = os.path.join(self.outdir, "figs")

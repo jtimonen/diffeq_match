@@ -2,17 +2,21 @@ import torch
 import torch.nn as nn
 from torch.distributions import Normal
 import numpy as np
+from scipy.stats import gaussian_kde
+
+
+def bandwidth_silverman(x_base):
+    """Determine KDE bandwidth using Silverman's rule."""
+    kde = gaussian_kde(x_base)
+    return kde.silverman_factor()
 
 
 class KDE(nn.Module):
-    """KDE using a Gaussian kernel.
-    :param sigma: standard deviation.
-    :type sigma: float
-    """
+    """KDE using a Gaussian kernel."""
 
-    def __init__(self, sigma: float):
+    def __init__(self):
         super().__init__()
-        self.sigma = sigma
+        self.sigma = 0.1
         self.eps = 1e-8
 
     def forward(self, x_eval: torch.Tensor, x_base: torch.Tensor):
@@ -23,6 +27,11 @@ class KDE(nn.Module):
         t2 = gaussian_kernel_log(x_eval, x_base, self.sigma ** 2)
         val = 1.0 / N * torch.exp(t1 + t2).sum(dim=1)
         return torch.log(self.eps + val)
+
+    def set_bandwidth(self, x_base):
+        bw = bandwidth_silverman(x_base)
+        self.sigma = bw
+        print("KDE bandwidth set to", bw)
 
 
 class ParamKDE(nn.Module):

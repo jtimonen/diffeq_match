@@ -16,7 +16,7 @@ from .plotting import (
 )
 
 from .discriminator import Discriminator
-from .math import log_eps, ParamKDE
+from .math import log_eps, KDE
 from .data import create_dataloader, MyDataset
 from .networks import TanhNetTwoLayer
 from .callbacks import MyCallback
@@ -62,7 +62,7 @@ class VectorField(nn.Module):
 class GenModel(nn.Module):
     """Main model module."""
 
-    def __init__(self, z0, n_hidden: int = 32, sigma_init: float = 0.1):
+    def __init__(self, z0, n_hidden: int = 32):
         super().__init__()
         self.n_init = z0.shape[0]
         self.D = z0.shape[1]
@@ -70,8 +70,11 @@ class GenModel(nn.Module):
         self.field_b = Reverser(self.field)
         self.outdir = os.getcwd()
         self.z0 = torch.tensor(z0).float()
-        self.kde = ParamKDE(sigma_init=sigma_init)
+        self.kde = KDE()
         print("Created model with D =", self.D, ", n_init =", self.n_init)
+
+    def set_bandwidth(self, z_data):
+        self.kde.set_bandwidth(z_data)
 
     def draw_init(self, N: int):
         idx = np.random.choice(self.n_init, size=N, replace=True)
@@ -117,6 +120,7 @@ class GenModel(nn.Module):
         lr: float = 0.005,
         plot_freq=0,
     ):
+        self.set_bandwidth(z_data)
         z_data = torch.from_numpy(z_data).float()
         learner = TrainingSetup(
             self,

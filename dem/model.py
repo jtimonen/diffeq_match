@@ -253,6 +253,16 @@ class TrainingSetup(pl.LightningModule):
         self.sde_viz(z_data, idx_epoch)
 
     @torch.no_grad()
+    def generate_traj(self, N: int = 30, z_init=None):
+        """Returns tensor of shape (L, N, D)."""
+        L = 100
+        ts = torch.linspace(0, 1, L).float()
+        if z_init is None:
+            z_init = self.model.draw_init(N)
+        z_traj = self.model.traj(z_init, ts, sde=True, forward=True)
+        return z_traj
+
+    @torch.no_grad()
     def visualize(self, z_samp, z_data, loss, idx_epoch):
         fig_dir = os.path.join(self.outdir, "figs")
         if not os.path.isdir(fig_dir):

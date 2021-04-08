@@ -12,8 +12,8 @@ def load_data_txt(parent_dir, verbose=True):
     p4 = os.path.join(parent_dir, "end_idx.txt")
     z_data = np.loadtxt(p1)
     init_indices = np.loadtxt(p2).astype(int)
-    start_idx = int(np.loadtxt(p3))
-    end_idx = int(np.loadtxt(p4))
+    start_idx = np.loadtxt(p3).astype(int)
+    end_idx = np.loadtxt(p4).astype(int)
     z0 = np.array(z_data[init_indices, :])
     if verbose:
         print("loaded data from:", parent_dir)

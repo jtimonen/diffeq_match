@@ -62,7 +62,9 @@ class VectorField(nn.Module):
 class GenModel(nn.Module):
     """Main model module."""
 
-    def __init__(self, z0, n_hidden: int = 32, azimuth_3d=45, elevation_3d=45):
+    def __init__(
+        self, z0, n_hidden: int = 32, azimuth_3d=45, elevation_3d=45, H_3d=2.5
+    ):
         super().__init__()
         self.n_init = z0.shape[0]
         self.D = z0.shape[1]
@@ -73,6 +75,7 @@ class GenModel(nn.Module):
         self.kde = KDE()
         self.azimuth_3d = azimuth_3d
         self.elevation_3d = elevation_3d
+        self.H_3d = H_3d
         print("Created model with D =", self.D, ", n_init =", self.n_init)
 
     def set_bandwidth(self, z_data):

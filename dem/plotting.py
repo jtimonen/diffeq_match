@@ -99,7 +99,7 @@ def plot_state_2d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs
 
 def plot_state_3d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     fig = plt.figure(figsize=(13, 13))
-    H = 2.4
+    H = model.H_3d
     azim = model.azimuth_3d
     elev = model.elevation_3d
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")
@@ -202,7 +202,7 @@ def plot_sde_2d(model, z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
 
 def plot_sde_3d(model, z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
     fig = plt.figure(figsize=(13, 13))
-    H = 2.4
+    H = model.H_3d
     azim = model.azimuth_3d
     elev = model.elevation_3d
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")

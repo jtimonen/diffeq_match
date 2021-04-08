@@ -7,7 +7,7 @@ from scipy.stats import gaussian_kde
 
 def bandwidth_silverman(x_base):
     """Determine KDE bandwidth using Silverman's rule."""
-    kde = gaussian_kde(x_base)
+    kde = gaussian_kde(x_base.T)
     return kde.silverman_factor()
 
 

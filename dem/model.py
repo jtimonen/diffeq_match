@@ -62,7 +62,7 @@ class VectorField(nn.Module):
 class GenModel(nn.Module):
     """Main model module."""
 
-    def __init__(self, z0, n_hidden: int = 32):
+    def __init__(self, z0, n_hidden: int = 32, azimuth_3d=45, elevation_3d=45):
         super().__init__()
         self.n_init = z0.shape[0]
         self.D = z0.shape[1]
@@ -71,6 +71,8 @@ class GenModel(nn.Module):
         self.outdir = os.getcwd()
         self.z0 = torch.tensor(z0).float()
         self.kde = KDE()
+        self.azimuth_3d = azimuth_3d
+        self.elevation_3d = elevation_3d
         print("Created model with D =", self.D, ", n_init =", self.n_init)
 
     def set_bandwidth(self, z_data):
@@ -263,11 +265,11 @@ class TrainingSetup(pl.LightningModule):
         z_traj = z_traj.detach().cpu().numpy()
         z_data = z_data.detach().cpu().numpy()
         if self.model.D == 2:
-            plot_sde_2d(z_data, z_traj, idx_epoch, save_dir=fig_dir)
+            plot_sde_2d(self.model, z_data, z_traj, idx_epoch, save_dir=fig_dir)
         elif self.model.D == 3:
-            plot_sde_3d(z_data, z_traj, idx_epoch, save_dir=fig_dir)
+            plot_sde_3d(self.model, z_data, z_traj, idx_epoch, save_dir=fig_dir)
         else:
-            plot_sde_nd(z_data, z_traj, idx_epoch, save_dir=fig_dir)
+            plot_sde_nd(self.model, z_data, z_traj, idx_epoch, save_dir=fig_dir)
 
     def configure_optimizers(self):
         opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)

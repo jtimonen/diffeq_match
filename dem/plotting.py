@@ -100,8 +100,8 @@ def plot_state_2d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs
 def plot_state_3d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     fig = plt.figure(figsize=(13, 13))
     H = 2.4
-    azim = -175
-    elev = 5
+    azim = model.azimuth_3d
+    elev = model.elevation_3d
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")
     ax2 = fig.add_subplot(2, 2, 2, projection="3d")
     ax1.view_init(elev=elev, azim=azim)
@@ -186,7 +186,7 @@ def plot_state_nd(
     draw_plot(save_name, save_dir, **kwargs)
 
 
-def plot_sde_2d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
+def plot_sde_2d(model, z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
     plt.figure(figsize=(8, 8))
     plt.scatter(z_data[:, 0], z_data[:, 1], color="black", alpha=0.1)
     J = z_traj.shape[1]
@@ -200,11 +200,11 @@ def plot_sde_2d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
     draw_plot(fn, save_dir, **kwargs)
 
 
-def plot_sde_3d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
+def plot_sde_3d(model, z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
     fig = plt.figure(figsize=(13, 13))
     H = 2.4
-    azim = -175
-    elev = 5
+    azim = model.azimuth_3d
+    elev = model.elevation_3d
     ax1 = fig.add_subplot(2, 2, 1, projection="3d")
     ax2 = fig.add_subplot(2, 2, 2, projection="3d")
     ax1.view_init(elev=elev, azim=azim)
@@ -246,7 +246,9 @@ def plot_sde_3d(z_data, z_traj, idx_epoch, save_dir=".", **kwargs):
     draw_plot(fn, save_dir, **kwargs)
 
 
-def plot_sde_nd(z_data, z_traj, idx_epoch, panel_size=None, save_dir=".", **kwargs):
+def plot_sde_nd(
+    model, z_data, z_traj, idx_epoch, panel_size=None, save_dir=".", **kwargs
+):
     """Pair plot with all dimension pairs."""
     d = z_data.shape[1]
     if d > 10:

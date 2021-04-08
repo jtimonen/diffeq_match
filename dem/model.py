@@ -241,6 +241,18 @@ class TrainingSetup(pl.LightningModule):
         return loss
 
     @torch.no_grad()
+    def check_model(self, z_data):
+        z_data = torch.from_numpy(z_data).float()
+        N = z_data.size(0)
+        z_fake = self.model(N)  # generate fake data
+        lt1, lt2 = self.kde_terms(z_data, z_fake)
+        loss = 0.5 * (lt1 + lt2)
+        print("valid_loss", loss)
+        idx_epoch = -1
+        self.visualize(z_fake, z_data, loss, idx_epoch)
+        self.sde_viz(z_data, idx_epoch)
+
+    @torch.no_grad()
     def visualize(self, z_samp, z_data, loss, idx_epoch):
         fig_dir = os.path.join(self.outdir, "figs")
         if not os.path.isdir(fig_dir):

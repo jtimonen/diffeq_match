@@ -1,6 +1,7 @@
 from dem import load_data_txt, GenModel
 from dem.model import TrainingSetup
 import numpy as np
+
 # Load data
 pdir = "nl19_D3_G2000_H64_MC30-real--silver--dentate-gyrus-neurogenesis_hochgerner"
 z_data, z0, _, _ = load_data_txt(pdir)
@@ -19,7 +20,3 @@ ts = TrainingSetup.load_from_checkpoint(
 )
 zt = ts.generate_traj(N=1000).cpu().detach().numpy()
 np.save("z_traj.npy", zt)
-
-
-
-

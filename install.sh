@@ -1,4 +1,4 @@
 rm -rf build/
 rm -rf dist/
-python setup.py build
-python setup.py install
+python3 -m setup build
+python3 -m setup install

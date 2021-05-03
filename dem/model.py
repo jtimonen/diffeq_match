@@ -6,116 +6,43 @@ import torchdiffeq
 import torchsde
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
-from .plotting import (
-    plot_state_2d,
-    plot_state_3d,
-    plot_state_nd,
-    plot_sde_2d,
-    plot_sde_3d,
-    plot_sde_nd,
-)
 
-from .discriminator import Discriminator
-from .math import log_eps, KDE
+
+from .vectorfield import VectorField, Reverser
+from .priorinfo import PriorInfo, create_prior_info
+from .kde import KdeDiscriminator
 from .data import create_dataloader, MyDataset
-from .networks import TanhNetTwoLayer
 from .callbacks import MyCallback
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-class Reverser(nn.Module):
-    """Reverses the sign of nn.Module output."""
-
-    def __init__(self, f: nn.Module):
-        super().__init__()
-        self.f = f
-
-    def forward(self, t, y):
-        return -self.f(t, y)
-
-
-class VectorField(nn.Module):
-    def __init__(self, D, n_hidden):
-        super().__init__()
-        self.D = D
-        self.net_f = TanhNetTwoLayer(D, D, n_hidden)
-        self.noise_type = "diagonal"
-        self.sde_type = "ito"
-        ln = torch.Tensor([np.log(0.2)]).float()
-        self.log_noise = nn.Parameter(ln, requires_grad=True)
-
-    @property
-    def diffusion_magnitude(self):
-        return torch.exp(self.log_noise)
-
-    def forward(self, t, y):
-        return self.f(t, y)
-
-    def f(self, t, y):
-        return self.net_f(y)
-
-    def g(self, t, y):
-        g = self.diffusion_magnitude
-        return g * torch.ones_like(y)
+def create_model(D: int, n_hidden: int = 32, z_init=None, z_terminal=None):
+    """Construct a model with some default settings."""
+    vector_field = VectorField(D, n_hidden)
+    prior_info = create_prior_info(z_init, z_terminal)
+    model = GenModel(vector_field, prior_info)
+    return model
 
 
 class GenModel(nn.Module):
     """Main model module."""
 
-    def __init__(
-        self, z0, n_hidden: int = 32, azimuth_3d=45, elevation_3d=45, H_3d=2.5
-    ):
+    def __init__(self, vector_field: VectorField, prior_info: PriorInfo):
         super().__init__()
-        self.n_init = z0.shape[0]
-        self.D = z0.shape[1]
-        self.field = VectorField(self.D, n_hidden)
-        self.field_b = Reverser(self.field)
-        self.outdir = os.getcwd()
-        self.z0 = torch.tensor(z0).float()
-        self.kde = KDE()
-        self.azimuth_3d = azimuth_3d
-        self.elevation_3d = elevation_3d
-        self.H_3d = H_3d
-        print("Created model with D =", self.D, ", n_init =", self.n_init)
+        self.prior_info = prior_info
+        self.field = vector_field
+        self.field_reverse = Reverser(self.field)
+        self.D = vector_field.D
+        self.disc = KdeDiscriminator()
 
     def set_bandwidth(self, z_data):
         self.kde.set_bandwidth(z_data)
-
-    def draw_init(self, N: int):
-        idx = np.random.choice(self.n_init, size=N, replace=True)
-        return self.z0[idx, :]
-
-    def traj(self, z_init, ts, sde: bool = False, forward: bool = True):
-        if forward:
-            if sde:
-                return torchsde.sdeint(self.field, z_init, ts, method="euler")
-            else:
-                return torchdiffeq.odeint_adjoint(
-                    self.field, z_init, ts, atol=1e-5, rtol=1e-4
-                )
-        else:
-            if sde:
-                raise ValueError("Cannot integrate SDE backward!")
-            else:
-                return torchdiffeq.odeint_adjoint(self.field_b, z_init, ts)
 
     def forward(self, N: int):
         ts = torch.linspace(0, 1, N).float()
         z_init = self.draw_init(N)
         z_samp = self.traj(z_init, ts, sde=True, forward=True)
         return torch.transpose(z_samp.diagonal(), 0, 1)
-
-    @torch.no_grad()
-    def f_numpy(self, z):
-        z = torch.from_numpy(z).float()
-        f = self.field.f(0, z).cpu().detach().numpy()
-        return f
-
-    @torch.no_grad()
-    def g_numpy(self, z):
-        z = torch.from_numpy(z).float()
-        g = self.field.g(0, z).cpu().detach().numpy()
-        return g[:, 0]
 
     def fit(
         self,

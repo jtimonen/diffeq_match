@@ -1,52 +1,7 @@
 from matplotlib import pyplot as plt
-import os
 import numpy as np
 from .utils import create_grid_around
-import seaborn as sns
 import torch
-
-
-def keys_to_colors(keys):
-    uk = np.unique(keys)
-    n_colors = len(uk)
-    if n_colors <= 10:
-        pal = sns.color_palette("tab10")[0:n_colors]
-    elif n_colors <= 20:
-        pal = sns.color_palette("tab20")[0:n_colors]
-    else:
-        raise RuntimeError("not enough colors to plot > 20 categories!")
-    color_dict = dict(zip(uk, pal))
-    colors = [color_dict[key] for key in keys]
-    return colors
-
-
-def determine_nrows_ncols(nplots: int):
-    """Determine number of rows and columns a grid of subplots.
-    :param nplots: total number of subplots
-    :type nplots: int
-    """
-    if nplots < 4:
-        ncols = nplots
-    elif nplots < 5:
-        ncols = 2
-    elif nplots < 10:
-        ncols = 3
-    else:
-        ncols = 4
-    nrows = int(np.ceil(nplots / ncols))
-    return nrows, ncols
-
-
-def draw_plot(save_name, save_dir=".", **kwargs):
-    """Function to be used always when a plot is to be shown or saved."""
-    if save_name is None:
-        plt.show()
-    else:
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
-        save_path = os.path.join(save_dir, save_name)
-        plt.savefig(save_path, **kwargs)
-        plt.close()
 
 
 def plot_state_2d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs):

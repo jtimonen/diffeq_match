@@ -8,7 +8,7 @@ import pytorch_lightning as pl
 
 from .vectorfield import VectorField, Reverser
 from .priorinfo import PriorInfo, create_prior_info
-from .kde import KdeDiscriminator
+from .discriminator import Discriminator, KdeDiscriminator
 from .data import create_dataloader, MyDataset
 from .callbacks import MyCallback
 from pytorch_lightning.callbacks import ModelCheckpoint

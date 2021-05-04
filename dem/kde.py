@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 from scipy.stats import gaussian_kde
 
-from .math import log_eps, gaussian_kernel_log
+from .math import gaussian_kernel_log
 
 
 def bandwidth_silverman(x_base: np.ndarray):
@@ -41,13 +41,13 @@ class KDE(nn.Module):
         print("KDE bandwidth set to", self.bw)
 
     def forward(self, x_eval: torch.Tensor, x_base: torch.Tensor):
-        """Returns logarithm of KDE value."""
+        """Returns KDE value."""
         N = x_base.size(0)
         D = x_base.size(1)
         t1 = -0.5 * D * np.log(2 * np.pi) - torch.log(self.bw)
         t2 = gaussian_kernel_log(x_eval, x_base, self.bw ** 2)
         val = 1.0 / N * torch.exp(t1 + t2).sum(dim=1)
-        return log_eps(val)
+        return val
 
 
 class ParamKDE(KDE):

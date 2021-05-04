@@ -3,79 +3,59 @@ import torch.nn as nn
 import numpy as np
 from scipy.stats import gaussian_kde
 
-from .math import mvrnorm, log_eps, accuracy, gaussian_kernel_log
-from .networks import LeakyReluNetTwoLayer
+from .math import log_eps, gaussian_kernel_log
 
 
-class KdeDiscriminator(nn.Module):
-    """Classifier."""
-
-    def __init__(self, D: int, n_hidden: int = 64):
-        super().__init__()
-        self.net = LeakyReluNetTwoLayer(D, 1, n_hidden)
-        self.D = D
-
-    def forward(self, z):
-        z = self.net(z)
-        validity = torch.sigmoid(z)
-        return validity
-
-    def classify_numpy(self, z):
-        z = torch.from_numpy(z).float()
-        val = self(z)
-        return val.detach().cpu().numpy()
-
-
-def bandwidth_silverman(x_base):
+def bandwidth_silverman(x_base: np.ndarray):
     """Determine KDE bandwidth using Silverman's rule."""
     kde = gaussian_kde(x_base.T)
     return 0.5 * kde.silverman_factor()
 
 
 class KDE(nn.Module):
-    """KDE using a Gaussian kernel."""
+    """Kernel density estimator using a Gaussian kernel.
 
-    def __init__(self):
-        super().__init__()
-        self.sigma = 0.1
-        self.eps = 1e-8
-
-    def forward(self, x_eval: torch.Tensor, x_base: torch.Tensor):
-        """Returns logarithm of KDE value."""
-        N = x_base.size(0)
-        D = x_base.size(1)
-        t1 = -0.5 * D * np.log(2 * np.pi) - np.log(self.sigma)
-        t2 = gaussian_kernel_log(x_eval, x_base, self.sigma ** 2)
-        val = 1.0 / N * torch.exp(t1 + t2).sum(dim=1)
-        return torch.log(self.eps + val)
-
-    def set_bandwidth(self, x_base):
-        bw = bandwidth_silverman(x_base)
-        self.sigma = bw
-        print("KDE bandwidth set to", bw)
-
-
-class ParamKDE(nn.Module):
-    """KDE using a Gaussian kernel.
-    :param sigma_init: initial standard deviation.
-    :type sigma_init: float
+    :param bw_init: initial bandwidth.
+    :type bw_init: float
     """
 
-    def __init__(self, sigma_init: float):
+    def __init__(self, bw_init: float = 0.2):
         super().__init__()
-        sig_t = torch.Tensor([np.log(sigma_init)]).float()
-        self.log_sigma = nn.Parameter(sig_t, requires_grad=True)
-        self.eps = 1e-8
+        self.bw_init = bw_init
+        self.log_bw = torch.tensor([np.log(bw_init)])
+        self.set_bw(bw_init)
 
     @property
-    def sigma(self):
-        return torch.exp(self.log_sigma)
+    def bw(self):
+        return torch.exp(self.log_bw)
+
+    def set_bw(self, value: float):
+        assert value > 0, "bandwidth must be positive"
+        self.log_bw = torch.tensor([np.log(value)])
+
+    def set_bw_silverman(self, x_base: np.ndarray):
+        bw = bandwidth_silverman(x_base)
+        self.set_bw(bw)
+
+    def set_bw_finally(self):
+        print("KDE bandwidth set to", self.bw)
 
     def forward(self, x_eval: torch.Tensor, x_base: torch.Tensor):
         """Returns logarithm of KDE value."""
         N = x_base.size(0)
         D = x_base.size(1)
-        t1 = -0.5 * D * np.log(2 * np.pi) - torch.log(self.sigma)
-        t2 = gaussian_kernel_log(x_eval, x_base, self.sigma ** 2)
+        t1 = -0.5 * D * np.log(2 * np.pi) - torch.log(self.bw)
+        t2 = gaussian_kernel_log(x_eval, x_base, self.bw ** 2)
         val = 1.0 / N * torch.exp(t1 + t2).sum(dim=1)
-        return torch.log(self.eps + val)
+        return log_eps(val)
+
+
+class ParamKDE(KDE):
+    """KDE where bandwidth is a trainable parameter."""
+
+    def __init__(self, bw_init: float = 0.2):
+        super().__init__(bw_init)
+
+    def set_bw_finally(self):
+        print("KDE bandwidth (trainable parameter) set to", self.bw)
+        self.log_bw = nn.Parameter(self.log_bw, requires_grad=True)

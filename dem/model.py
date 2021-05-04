@@ -1,8 +1,6 @@
 import os
 import torch
 import torch.nn as nn
-import numpy as np
-import torchdiffeq
 import torchsde
 from pytorch_lightning import Trainer
 import pytorch_lightning as pl
@@ -20,20 +18,23 @@ def create_model(D: int, n_hidden: int = 32, z_init=None, z_terminal=None):
     """Construct a model with some default settings."""
     vector_field = VectorField(D, n_hidden)
     prior_info = create_prior_info(z_init, z_terminal)
-    model = GenModel(vector_field, prior_info)
+    disc = KdeDiscriminator(D)
+    model = GenModel(vector_field, prior_info, disc)
     return model
 
 
 class GenModel(nn.Module):
     """Main model module."""
 
-    def __init__(self, vector_field: VectorField, prior_info: PriorInfo):
+    def __init__(
+        self, vector_field: VectorField, prior_info: PriorInfo, disc: Discriminator
+    ):
         super().__init__()
         self.prior_info = prior_info
         self.field = vector_field
         self.field_reverse = Reverser(self.field)
         self.D = vector_field.D
-        self.disc = KdeDiscriminator()
+        self.disc = disc
 
     def set_bandwidth(self, z_data):
         self.kde.set_bandwidth(z_data)

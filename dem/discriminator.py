@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from sklearn.metrics import accuracy_score, confusion_matrix
+
 from .networks import LeakyReluNetTwoLayer
 from .kde import KDE, ParamKDE
 from .math import log_eps
@@ -26,11 +28,15 @@ class Discriminator(nn.Module):
         labels = (val > 0.5).astype(float)
         return labels.ravel()
 
-    def evaluate(self, x: np.ndarray, true_labels):
-        labels = self.classify(x)
-        L = len(labels)
-        accuracy = 1.0 / L * np.sum(labels == true_labels)
-        return accuracy
+    def accuracy(self, x: np.ndarray, y_true, y_pred=None):
+        if y_pred is None:
+            y_pred = self.classify(x)
+        return accuracy_score(y_true=y_true, y_pred=y_pred)
+
+    def confusion_matrix(self, x: np.ndarray, y_true, y_pred=None):
+        if y_pred is None:
+            y_pred = self.classify(x)
+        return confusion_matrix(y_true=y_true, y_pred=y_pred)
 
 
 class NeuralDiscriminator(Discriminator):

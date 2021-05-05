@@ -1,29 +1,55 @@
-def plot_disc_2d(disc, z_fake, z_data, only_contour=False, save_dir=".", **kwargs):
+from matplotlib import pyplot as plt
+import numpy as np
+from hdviz import create_grid_around, draw_plot, Plotter2d
+
+
+def classify_at_2d_grid_around(disc, x: np.ndarray, M: int = 30):
+    u = create_grid_around(x, M)
+    label, val = disc.classify(u)
+    X = np.reshape(u[:, 0], (M, M))
+    Y = np.reshape(u[:, 1], (M, M))
+    Z = np.reshape(val, (M, M))
+    Z_label = np.reshape(label, (M, M))
+    return X, Y, Z, Z_label
+
+
+def plot_disc_2d(
+    disc,
+    x: np.ndarray,
+    true_labels,
+    prob=True,
+    cm=None,
+    scatter_kwargs=None,
+    scatter_colors=None,
+    scatter_alpha=0.6,
+    grid_size: int = 60,
+    save_name=None,
+    save_dir=".",
+    **kwargs
+):
     """Visualize discriminator output."""
-    epoch_str = "{0:04}".format(idx_epoch)
-    loss_str = "{:.5f}".format(loss)
-    acc_str = "{:.5f}".format(acc)
-    title = "epoch " + epoch_str + ", loss = " + loss_str + ", acc = " + acc_str
-    fn_pre = "c_" if only_contour else "d_"
-    fn = fn_pre + epoch_str + ".png"
-    S = 30
-    u = create_grid_around(z_data, S)
-    val = disc.classify_numpy(u)
-    X = np.reshape(u[:, 0], (S, S))
-    Y = np.reshape(u[:, 1], (S, S))
-    Z = np.reshape(val, (S, S))
+    if cm is None:
+        cm = plt.cm.RdBu
+    X, Y, Z, Z_label = classify_at_2d_grid_around(disc, x, grid_size)
+    fig, ax = plt.subplots(1, 1, figsize=(7.0, 6.5))
+    if not prob:
+        Z = Z_label
+    if scatter_kwargs is None:
+        scatter_kwargs = dict(edgecolor="k")
+    if scatter_colors is None:
+        scatter_colors = ["#FF0000", "#0000FF"]
+    ax.contourf(X, Y, Z, cmap=cm, alpha=0.8)
+    pp = Plotter2d()
+    pp.add_pointsets(
+        x=x,
+        categories=true_labels,
+        categ_prefix="class",
+        colors=scatter_colors,
+        alpha=scatter_alpha,
+    )
+    pp.scatter_kwargs = scatter_kwargs
+    pp.plot(ax=ax)
+    draw_plot(save_name, save_dir, **kwargs)
 
-    plt.figure(figsize=(7.0, 6.5))
-    plt.contourf(X, Y, Z)
-    plt.colorbar()
-    if not only_contour:
-        plt.scatter(z_data[:, 0], z_data[:, 1], c="red", marker=".", alpha=0.3)
-    if z_fake is not None:
-        plt.scatter(z_fake[:, 0], z_fake[:, 1], c="orange", marker=".", alpha=0.3)
 
-    plt.title(title)
-    x_min = np.min(z_data) * 1.25
-    x_max = np.max(z_data) * 1.25
-    plt.xlim(x_min, x_max)
-    plt.ylim(x_min, x_max)
-    draw_plot(fn, save_dir, **kwargs)
+# draw_plot(fn, save_dir, **kwargs)

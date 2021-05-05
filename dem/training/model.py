@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 
-from dem.data.data import create_dataloader
+from dem.data.dataloader import create_dataloader
 from .callbacks import MyCallback
 
 

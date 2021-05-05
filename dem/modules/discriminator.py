@@ -26,16 +26,16 @@ class Discriminator(nn.Module):
     def classify(self, x: np.ndarray):
         val = self.forward_numpy(x)
         labels = (val > 0.5).astype(float)
-        return labels.ravel()
+        return labels.ravel(), val.ravel()
 
     def accuracy(self, x: np.ndarray, y_true, y_pred=None):
         if y_pred is None:
-            y_pred = self.classify(x)
+            y_pred, _ = self.classify(x)
         return accuracy_score(y_true=y_true, y_pred=y_pred)
 
     def confusion_matrix(self, x: np.ndarray, y_true, y_pred=None):
         if y_pred is None:
-            y_pred = self.classify(x)
+            y_pred, _ = self.classify(x)
         return confusion_matrix(y_true=y_true, y_pred=y_pred)
 
 

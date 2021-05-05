@@ -1,80 +1,42 @@
-import os
 import torch
 import torch.nn as nn
-import torchsde
-from pytorch_lightning import Trainer
 import pytorch_lightning as pl
 
-
-from .vectorfield import VectorField, Reverser
-from .priorinfo import PriorInfo, create_prior_info
-from .discriminator import Discriminator, KdeDiscriminator
-from .data import create_dataloader, MyDataset
+from dem.data.data import create_dataloader
 from .callbacks import MyCallback
-from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-def create_model(D: int, n_hidden: int = 32, z_init=None, z_terminal=None):
-    """Construct a model with some default settings."""
-    vector_field = VectorField(D, n_hidden)
-    prior_info = create_prior_info(z_init, z_terminal)
-    disc = KdeDiscriminator(D)
-    model = GenModel(vector_field, prior_info, disc)
-    return model
-
-
-class GenModel(nn.Module):
-    """Main model module."""
-
-    def __init__(
-        self, vector_field: VectorField, prior_info: PriorInfo, disc: Discriminator
-    ):
-        super().__init__()
-        self.prior_info = prior_info
-        self.field = vector_field
-        self.field_reverse = Reverser(self.field)
-        self.D = vector_field.D
-        self.disc = disc
-
-    def set_bandwidth(self, z_data):
-        self.kde.set_bandwidth(z_data)
-
-    def forward(self, N: int):
-        ts = torch.linspace(0, 1, N).float()
-        z_init = self.draw_init(N)
-        z_samp = self.traj(z_init, ts, sde=True, forward=True)
-        return torch.transpose(z_samp.diagonal(), 0, 1)
-
-    def fit(
+def train_model(
+    self,
+    model,
+    z_data,
+    batch_size=128,
+    n_epochs: int = 400,
+    lr: float = 0.005,
+    plot_freq=0,
+):
+    model.set_bandwidth(z_data)
+    z_data = torch.from_numpy(z_data).float()
+    learner = TrainingSetup(
         self,
         z_data,
-        batch_size=128,
-        n_epochs: int = 400,
-        lr: float = 0.005,
-        plot_freq=0,
-    ):
-        self.set_bandwidth(z_data)
-        z_data = torch.from_numpy(z_data).float()
-        learner = TrainingSetup(
-            self,
-            z_data,
-            batch_size,
-            lr,
-            plot_freq,
-        )
-        save_path = learner.outdir
+        batch_size,
+        lr,
+        plot_freq,
+    )
+    save_path = learner.outdir
 
-        checkpoint_callback = ModelCheckpoint(
-            verbose=True, monitor="valid_loss", mode="min", prefix="mod"
-        )
+    checkpoint_callback = ModelCheckpoint(
+        verbose=True, monitor="valid_loss", mode="min", prefix="mod"
+    )
 
-        trainer = Trainer(
-            min_epochs=n_epochs,
-            max_epochs=n_epochs,
-            default_root_dir=save_path,
-            callbacks=[MyCallback(), checkpoint_callback],
-        )
-        trainer.fit(learner)
+    trainer = Trainer(
+        min_epochs=n_epochs,
+        max_epochs=n_epochs,
+        default_root_dir=save_path,
+        callbacks=[MyCallback(), checkpoint_callback],
+    )
+    trainer.fit(learner)
 
 
 class TrainingSetup(pl.LightningModule):

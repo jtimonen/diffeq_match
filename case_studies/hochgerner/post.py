@@ -1,5 +1,5 @@
 from dem import load_data_txt, GenModel
-from dem.model import TrainingSetup
+from dem.modules.model import TrainingSetup
 import numpy as np
 
 # Load data

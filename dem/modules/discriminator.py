@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-from .networks import LeakyReluNetTwoLayer
-from .kde import KDE, ParamKDE
-from .math import log_eps
+from dem.modules.networks import LeakyReluNetTwoLayer
+from dem.modules.kde import KDE, ParamKDE
+from dem.utils.math import log_eps
 
 
 class Discriminator(nn.Module):
@@ -85,10 +85,11 @@ class KdeDiscriminator(Discriminator):
         b = self.x1 is not None
         return a and b
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, log: bool = False):
         if not self.data_is_set:
             raise RuntimeError("Data not set!")
         score_class0 = self.kde(x, self.x0)
         score_class1 = self.kde(x, self.x1)
         log_p_class1 = log_eps(score_class1) - log_eps(score_class0 + score_class1)
-        return torch.exp(log_p_class1)
+        val = log_p_class1 if log else torch.exp(log_p_class1)
+        return val

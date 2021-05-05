@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 from scipy.stats import gaussian_kde
 
-from .math import gaussian_kernel_log
+from dem.utils.math import gaussian_kernel_log
 
 
 def bandwidth_silverman(x_base: np.ndarray):

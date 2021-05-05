@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from .plotting import draw_plot
-from mpl_toolkits.mplot3d import Axes3D
+from hdviz import draw_plot
 
 
 def sim(idx: int = 1, N: int = 500, sigma: float = 0.1, **sim_kwargs):

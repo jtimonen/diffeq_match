@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.distributions import Normal
-import numpy as np
 
 
 def pairwise_squared_distances(x: torch.Tensor, y: torch.Tensor):
@@ -95,12 +94,6 @@ def mvrnorm(mu, s2):
     dist = Normal(mu, s2.sqrt())
     smp = dist.rsample()
     return smp
-
-
-def accuracy(val_real, val_fake):
-    N = len(val_real) + len(val_fake)
-    corr = np.sum(val_real >= 0.5) + np.sum(val_fake < 0.5)
-    return corr / N
 
 
 def dot_torch(a, b):

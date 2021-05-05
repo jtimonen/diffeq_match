@@ -1,4 +1,4 @@
-from .networks import TanhNetTwoLayer
+from dem.modules.networks import TanhNetTwoLayer
 import torch
 import torch.nn as nn
 import numpy as np

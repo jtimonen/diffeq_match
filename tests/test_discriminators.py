@@ -1,5 +1,5 @@
 from sklearn.datasets import make_moons
-from dem.discriminator import KdeDiscriminator, NeuralDiscriminator
+from dem.modules.discriminator import KdeDiscriminator, NeuralDiscriminator
 import numpy as np
 
 

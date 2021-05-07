@@ -1,12 +1,11 @@
 from sklearn.datasets import make_moons
-from dem.modules.discriminator import KdeDiscriminator, NeuralDiscriminator
-from dem.plotting.discriminator import plot_disc_2d
 import numpy as np
+import dem
 
 
 def test_neural_discriminator():
     x, labels = make_moons(200, noise=0.3)
-    disc = NeuralDiscriminator(D=2, n_hidden=32)
+    disc = dem.NeuralDiscriminator(D=2, n_hidden=32)
     acc = disc.accuracy(x, y_true=labels)
     cm = disc.confusion_matrix(x, y_true=labels)
     assert acc >= 0, "accuracy must be positive"
@@ -19,10 +18,10 @@ def test_kde_discriminator():
     idx1 = np.where(labels == 1)[0]
     x0 = x[idx0, :]
     x1 = x[idx1, :]
-    disc = KdeDiscriminator(D=2, bw_init=0.2, trainable=True)
+    disc = dem.KdeDiscriminator(D=2, bw_init=0.2, trainable=True)
     disc.set_data_numpy(x0, x1)
     acc = disc.accuracy(x, y_true=labels)
     cm = disc.confusion_matrix(x, y_true=labels)
     assert acc >= 0.9, "accuracy should be close to 1.00"
     assert cm.shape == (2, 2), "shape of confusion matrix should be (2, 2)"
-    plot_disc_2d(disc, x, labels)
+    dem.plot_disc_2d(disc, x, labels)

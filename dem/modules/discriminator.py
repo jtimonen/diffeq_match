@@ -1,3 +1,4 @@
+import abc
 import numpy as np
 import torch
 import torch.nn as nn
@@ -8,15 +9,16 @@ from dem.modules.kde import KDE, ParamKDE
 from dem.utils.math import log_eps
 
 
-class Discriminator(nn.Module):
+class Discriminator(nn.Module, abc.ABC):
     """Abstract binary classifier class."""
 
     def __init__(self, D: int):
         super().__init__()
         self.D = D
 
+    @abc.abstractmethod
     def forward(self, x: torch.Tensor):
-        return torch.sigmoid(torch.mean(x, dim=1))
+        raise NotImplementedError
 
     def forward_numpy(self, x: np.ndarray):
         x = torch.from_numpy(x).float()

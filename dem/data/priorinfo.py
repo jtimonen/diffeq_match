@@ -2,6 +2,7 @@ import numpy as np
 
 
 def create_prior_info(z_init, z_terminal):
+    """Create prior info about generative process."""
     if (z_init is None) and (z_terminal is None):
         raise RuntimeError("z_init and z_terminal cannot both be None!")
     if z_init is None:

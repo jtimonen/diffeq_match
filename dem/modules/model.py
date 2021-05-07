@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from dem.data.priorinfo import PriorInfo, create_prior_info
-from dem.modules.vectorfield import VectorField, Reverser
+from dem.data import PriorInfo, create_prior_info
+from dem.modules.vectorfield import Reverser, VectorField
 from dem.modules.discriminator import Discriminator, KdeDiscriminator
 
 

@@ -14,14 +14,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
 with open("requirements.txt", "r") as fh:
     install_requires = fh.read()
 
-# Get version from hdviz/__init__.py
-here = os.path.realpath(os.path.dirname(__file__))
-with open(os.path.join(here, pkg_name, "__init__.py")) as f:
-    meta_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", f.read(), re.M)
-    if meta_match:
-        version = meta_match.group(1)
-    else:
-        raise RuntimeError("Unable to find __version__ string.")
+# Get version and package name from dem/__init__.py
+cwd = os.path.realpath(os.path.dirname(__file__))
+with open(os.path.join(cwd, pkg_name, "__init__.py")) as f:
+    mm_ver = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", f.read(), re.M)
+    version = mm_ver.group(1)
 
 setuptools.setup(
     name=pkg_name,

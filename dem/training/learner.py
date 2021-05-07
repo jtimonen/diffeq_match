@@ -1,38 +1,41 @@
 import os
+import abc
 import pytorch_lightning as pl
+
 from dem.data.dataloader import create_dataloader
 
-import torch
-import torch.nn as nn
 
-
-class OptimizationLearner(pl.LightningModule):
+class Learner(pl.LightningModule, abc.ABC):
     def __init__(
         self,
-        model: nn.Module,
         train_dataset,
         valid_dataset,
-        batch_size: int,
-        lr: float,
+        train_batch_size: int,
+        valid_batch_size=None,
         plot_freq=0,
         outdir="out",
+        num_workers: int = 0,
     ):
         super().__init__()
-        num_workers = 0
         train_loader = create_dataloader(
-            train_dataset, batch_size, num_workers, shuffle=True
+            train_dataset, train_batch_size, num_workers, shuffle=True
         )
         valid_loader = create_dataloader(
-            valid_dataset, None, num_workers, shuffle=False
+            valid_dataset, valid_batch_size, num_workers, shuffle=False
         )
-        self.N = len(train_loader.dataset)
-        self.model = model
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.plot_freq = plot_freq
-        self.lr = lr
         self.outdir = None
         self.set_outdir(outdir)
+
+    @property
+    def num_train(self):
+        return len(self.train_loader.dataset)
+
+    @property
+    def num_valid(self):
+        return len(self.valid_loader.dataset)
 
     def set_outdir(self, path):
         """Set output directory."""
@@ -50,8 +53,12 @@ class OptimizationLearner(pl.LightningModule):
                 self.visualize()
         return None
 
+    @abc.abstractmethod
+    def visualize(self, *args):
+        raise NotImplementedError
+
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        raise NotImplementedError
 
     def train_dataloader(self):
         return self.train_loader

@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -7,7 +8,6 @@ from .callbacks import MyCallback
 
 
 def train_model(
-    self,
     model,
     z_data,
     batch_size=128,
@@ -18,7 +18,7 @@ def train_model(
     model.set_bandwidth(z_data)
     z_data = torch.from_numpy(z_data).float()
     learner = TrainingSetup(
-        self,
+        model,
         z_data,
         batch_size,
         lr,

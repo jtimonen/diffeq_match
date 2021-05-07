@@ -84,9 +84,9 @@ class MMD(nn.Module):
         return mmd
 
 
-def log_eps(x):
+def log_eps(x, eps: float = 1e-8):
     """Numerically stable logarithm."""
-    return torch.log(x + 1e-8)
+    return torch.log(x + eps)
 
 
 def mvrnorm(mu, s2):

@@ -1,5 +1,6 @@
 import torch
 import sys
+import dem
 
 # Global variables
 _DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -26,12 +27,18 @@ def get_device():
     return _DEVICE
 
 
-def session_info(skip_cuda: bool = False):
+def session_info(skip_cuda: bool = False, quiet: bool = False):
     """Print version info of relevant dependencies and set output path.
     :param skip_cuda: Should CUDA information be skipped?
     :type skip_cuda: bool
+    :param quiet: should the info not be printed? if it is printed then None is
+    returned
     """
-    print(session_info_(skip_cuda))
+    si = session_info_(skip_cuda)
+    if not quiet:
+        print(si)
+        return None
+    return si
 
 
 def session_info_(skip_cuda: bool = False):
@@ -41,8 +48,8 @@ def session_info_(skip_cuda: bool = False):
     """
     ver = sys.version_info
     ver = str(ver[0]) + "." + str(ver[1]) + "." + str(ver[2])
-    msg = "Using "
-    msg = msg + " python-" + ver
+    msg = "Using dem-" + dem.__version__
+    msg = msg + ", python-" + ver
     msg = msg + ", torch-" + str(torch.__version__)
     msg += "\n - device: " + str(get_device())
     if not skip_cuda:

@@ -6,7 +6,7 @@ import numpy as np
 from pytorch_lightning import Trainer
 from .callbacks import MyCallback
 from dem.modules.discriminator import Discriminator
-from dem.data.dataset import ClassificationDataset
+from dem.data.dataset import SupervisedNumpyDataset
 
 
 def train_discriminator(
@@ -19,7 +19,7 @@ def train_discriminator(
     plot_freq=0,
     outdir="out",
 ):
-    ds = ClassificationDataset(x, labels)
+    ds = SupervisedNumpyDataset(x, labels)
     learner = DiscriminatorLearner(
         model=model,
         train_dataset=ds,
@@ -40,8 +40,8 @@ class DiscriminatorLearner(Learner):
     def __init__(
         self,
         model: Discriminator,
-        train_dataset: ClassificationDataset,
-        valid_dataset: ClassificationDataset,
+        train_dataset: SupervisedNumpyDataset,
+        valid_dataset: SupervisedNumpyDataset,
         batch_size: int,
         lr: float,
         plot_freq: int,
@@ -53,9 +53,19 @@ class DiscriminatorLearner(Learner):
         self.model = model
         self.lr = lr
 
-    def training_step(self, x, labels, batch_idx):
-        y_pred = self.model(x, labels)
-        print(y_pred)
+    def do_batch(self, x: torch.Tensor, labels):
+        if hasattr(self.model, "kde"):
+
+            y_pred = self.model(x)
+        else:
+            y_pred = self.model(x)
+
+    def training_step(self, data_batch, batch_idx):
+        x, labels = data_batch
+        print(x.shape)
+        print(labels.shape)
+
+        print(y_pred.shape)
 
     def validation_step(self, *args, **kwargs):
         pass

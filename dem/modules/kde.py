@@ -32,6 +32,7 @@ class KDE(nn.Module):
     def set_bw(self, value: float):
         assert value > 0, "bandwidth must be positive"
         self.log_bw = torch.tensor([np.log(value)])
+        self.set_bw_finally()
 
     def set_bw_silverman(self, x_base: np.ndarray):
         bw = bandwidth_silverman(x_base)

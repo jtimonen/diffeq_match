@@ -1,3 +1,19 @@
+from sklearn.metrics import accuracy_score
+import numpy as np
+
+
+def accuracy(y_true, y_pred):
+    return accuracy_score(y_true=y_true, y_pred=y_pred)
+
+
+def split_by_labels(x, labels):
+    idx0 = np.where(labels == 0)[0]
+    idx1 = np.where(labels == 1)[0]
+    x0 = x[idx0, :]
+    x1 = x[idx1, :]
+    return x0, x1
+
+
 def reshape_traj(z_traj):
     n_timepoints = z_traj.shape[0]
     n_samples = z_traj.shape[1]

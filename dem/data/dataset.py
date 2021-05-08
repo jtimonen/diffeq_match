@@ -1,62 +1,64 @@
 import numpy as np
 from torch.utils.data import Dataset
+from typing import Tuple
 
 
-class MyDataset(Dataset):
-    """A torch dataset."""
+class NumpyDataset(Dataset):
+    """Torch dataset for training using data consisting of a single numpy array."""
 
-    def __init__(self, z: np.ndarray):
-        super(MyDataset, self).__init__()
-        self.z = z
-        self.N = z.shape[0]
-        self.D = z.shape[1]
+    def __init__(self, x: np.ndarray):
+        super(NumpyDataset, self).__init__()
+        self.x = x
+        self.N = x.shape[0]
+        self.D = x.shape[1]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Get number of data samples."""
         return self.N
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int) -> np.ndarray:
         """Get a data sample for a given key.
         :param int idx: data point index
         """
-        return self.z[idx, :]
+        x = self.x[idx, :].astype(np.float32)
+        return x
 
     def __repr__(self):
-        """Get description of a MyDataset instance."""
-        desc = "A Dataset with %d observations and %d dimensions." % (
+        desc = "A NumpyDataset with %d observations and %d dimensions." % (
             self.N,
             self.D,
         )
         return desc
 
 
-class ClassificationDataset(Dataset):
-    """Torch dataset for supervised training of a model that classifies
-    points represented by rows of a numpy array.
-
-    :param x: the data to be classified, shape (N, D)
-    :param labels: true class labels, length N
+class SupervisedNumpyDataset(Dataset):
+    """Torch dataset for supervised training using data consisting of
+    numpy arrays.
     """
 
-    def __init__(self, x: np.ndarray, labels: np.ndarray):
-        super(ClassificationDataset, self).__init__()
+    def __init__(self, x: np.ndarray, y: np.ndarray):
+        super(SupervisedNumpyDataset, self).__init__()
         self.x = x
+        self.y = y
         self.N = x.shape[0]
         self.D = x.shape[1]
-        self.labels = labels
+        assert len(y) == self.N, "x and y shapes not compatible!"
+        self.y = y
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Get number of data samples."""
         return self.N
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int) -> Tuple[np.ndarray, np.ndarray]:
         """Get a data sample for a given key.
         :param int idx: data point index
         """
-        return self.x[idx, :], self.labels[idx]
+        x = self.x[idx, :].astype(np.float32)
+        y = self.y[idx].astype(np.float32)
+        return x, y
 
     def __repr__(self):
-        desc = "A ClassificationDataset with %d observations and %d dimensions." % (
+        desc = "A SupervisedNumpyDataset with %d observations and %d dimensions." % (
             self.N,
             self.D,
         )

@@ -11,9 +11,9 @@ class Learner(pl.LightningModule, abc.ABC):
         train_dataset,
         valid_dataset,
         train_batch_size: int,
-        valid_batch_size=None,
-        plot_freq=0,
-        outdir="out",
+        valid_batch_size,
+        plot_freq: int,
+        outdir,
         num_workers: int = 0,
     ):
         super().__init__()
@@ -41,9 +41,11 @@ class Learner(pl.LightningModule, abc.ABC):
         """Set output directory."""
         if not os.path.isdir(path):
             os.mkdir(path)
+            print("Created output directory " + path)
         else:
             raise RuntimeError("Output directory (" + path + ") exists!")
-        self.outdir = dir
+        self.outdir = path
+        print("Set output directory to " + path)
 
     def validation_epoch_end(self, outputs) -> None:
         idx_epoch = self.current_epoch

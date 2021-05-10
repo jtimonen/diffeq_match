@@ -6,7 +6,6 @@ from dem.training import *
 
 # Version defined here
 __version__ = "0.0.3"
-__pkg_name__ = "dem"
 
 # Exports
 functions = [
@@ -19,7 +18,7 @@ functions = [
     "get_device",
     "session_info",
     "plot_disc_2d",
-    "train_discriminator",
+    "train_occ",
     "train_model",
     "accuracy",
     "split_by_labels",

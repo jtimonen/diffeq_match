@@ -47,18 +47,6 @@ class Learner(pl.LightningModule, abc.ABC):
         self.outdir = path
         print("Set output directory to " + path)
 
-    def validation_epoch_end(self, outputs) -> None:
-        idx_epoch = self.current_epoch
-        pf = self.plot_freq
-        if pf > 0:
-            if idx_epoch % pf == 0:
-                self.visualize()
-        return None
-
-    @abc.abstractmethod
-    def visualize(self, *args):
-        raise NotImplementedError
-
     def configure_optimizers(self):
         raise NotImplementedError
 

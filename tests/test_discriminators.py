@@ -25,4 +25,4 @@ def test_kde_discriminator():
 def test_kde_discriminator_training():
     x, labels = make_moons(100, noise=0.2)
     disc = dem.KdeDiscriminator(D=2, bw_init=0.2, trainable=True)
-    # out = dem.train_discriminator(disc, x, labels)
+    out = dem.train_occ(disc, x)

@@ -23,6 +23,7 @@ def test_kde_discriminator():
 
 
 def test_kde_discriminator_training():
-    x, labels = make_moons(100, noise=0.2)
-    disc = dem.KdeDiscriminator(D=2, bw_init=0.2, trainable=True)
-    out = dem.train_occ(disc, x)
+    x, labels = make_moons(500, noise=0.2)
+    x0, _ = dem.split_by_labels(x, labels)
+    disc = dem.KdeDiscriminator(D=2, bw_init=1.0, trainable=True)
+    out = dem.train_occ(disc, x0, plot_freq=100)

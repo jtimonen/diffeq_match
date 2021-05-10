@@ -25,6 +25,9 @@ def plot_disc_2d(
     grid_size: int = 60,
     save_name=None,
     save_dir=".",
+    title="",
+    points=True,
+    contour=True,
     **kwargs
 ):
     """Visualize discriminator output."""
@@ -38,7 +41,8 @@ def plot_disc_2d(
         scatter_kwargs = dict(edgecolor="k")
     if scatter_colors is None:
         scatter_colors = ["#FF0000", "#0000FF"]
-    ax.contourf(X, Y, Z, cmap=cm, alpha=0.8)
+    if contour:
+        ax.contourf(X, Y, Z, cmap=cm, alpha=0.8)
     pp = Plotter2d()
     pp.add_pointsets(
         x=x,
@@ -48,8 +52,6 @@ def plot_disc_2d(
         alpha=scatter_alpha,
     )
     pp.scatter_kwargs = scatter_kwargs
-    pp.plot(ax=ax)
+    if points:
+        pp.plot(ax=ax, title=title)
     draw_plot(save_name, save_dir, **kwargs)
-
-
-# draw_plot(fn, save_dir, **kwargs)

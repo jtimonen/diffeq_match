@@ -58,5 +58,6 @@ class ParamKDE(KDE):
         super().__init__(bw_init)
 
     def set_bw_finally(self):
-        print("KDE bandwidth (trainable parameter) set to", self.bw)
+        msg = "KDE bandwidth (trainable parameter) set to %1.4f" % self.bw
+        print(msg)
         self.log_bw = nn.Parameter(self.log_bw, requires_grad=True)

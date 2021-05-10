@@ -3,31 +3,29 @@ import abc
 import pytorch_lightning as pl
 
 from dem.data.dataloader import create_dataloader
+from .setup import TrainingSetup
 
 
 class Learner(pl.LightningModule, abc.ABC):
-    def __init__(
-        self,
-        train_dataset,
-        valid_dataset,
-        train_batch_size: int,
-        valid_batch_size,
-        plot_freq: int,
-        outdir,
-        num_workers: int = 0,
-    ):
+    def __init__(self, setup: TrainingSetup):
         super().__init__()
         train_loader = create_dataloader(
-            train_dataset, train_batch_size, num_workers, shuffle=True
+            setup.train_dataset,
+            shuffle=True,
+            batch_size=setup.batch_size,
+            num_workers=setup.num_workers,
         )
         valid_loader = create_dataloader(
-            valid_dataset, valid_batch_size, num_workers, shuffle=False
+            setup.valid_dataset,
+            shuffle=False,
+            batch_size=None,
+            num_workers=setup.num_workers,
         )
         self.train_loader = train_loader
         self.valid_loader = valid_loader
-        self.plot_freq = plot_freq
-        self.outdir = None
-        self.set_outdir(outdir)
+        self.plot_freq = setup.plot_freq
+        self.outdir = setup.outdir
+        self.set_outdir(setup.outdir)
 
     @property
     def num_train(self):
@@ -55,6 +53,13 @@ class Learner(pl.LightningModule, abc.ABC):
 
     def val_dataloader(self):
         return self.valid_loader
+
+    def epoch_str(self, digits: int = 4):
+        return str(self.current_epoch).zfill(digits)
+
+    def create_figure_name(self, prefix: str = "fig", ext: str = ".png"):
+        fn = prefix + self.epoch_str() + ext
+        return fn
 
     # GAN STUFF
     # def loss_generator(self, z_samples):

@@ -2,8 +2,12 @@ from sklearn.metrics import accuracy_score
 import numpy as np
 
 
-def accuracy(y_true, y_pred):
-    return accuracy_score(y_true=y_true, y_pred=y_pred)
+def accuracy(y_true, y_pred, prob=False):
+    if prob:
+        pred_labels = (y_pred > 0.5).astype(float)
+    else:
+        pred_labels = y_pred
+    return accuracy_score(y_true=y_true, y_pred=pred_labels)
 
 
 def split_by_labels(x, labels):

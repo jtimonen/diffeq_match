@@ -4,6 +4,7 @@ import pytorch_lightning as pl
 
 from dem.data.dataloader import create_dataloader
 from .setup import TrainingSetup
+from dem.utils import read_logged_scalar, read_logged_events
 
 
 class Learner(pl.LightningModule, abc.ABC):
@@ -60,6 +61,16 @@ class Learner(pl.LightningModule, abc.ABC):
     def create_figure_name(self, prefix: str = "fig", ext: str = ".png"):
         fn = prefix + self.epoch_str() + ext
         return fn
+
+    def read_logged_scalar(self, name="valid_loss", version: int = 0):
+        """Read a logged scalar."""
+        df = read_logged_scalar(name=name, parent_dir=self.outdir, version=version)
+        return df
+
+    def read_logged_events(self, version: int = 0):
+        """Read the event accumulator."""
+        ea = read_logged_events(parent_dir=self.outdir, version=version)
+        return ea
 
     # GAN STUFF
     # def loss_generator(self, z_samples):

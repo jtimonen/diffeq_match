@@ -1,14 +1,14 @@
-import torch
 import os
+import numpy as np
+import torch
+from torch.nn.functional import binary_cross_entropy
 
 from .learner import Learner
 from .setup import TrainingSetup, run_training
-
-import numpy as np
 from dem.modules.discriminator import Discriminator
 from dem.data.dataset import NumpyDataset
 from dem.utils.math import mvrnorm
-from dem.utils.utils import accuracy
+from dem.utils.utils import accuracy, tensor_to_numpy, create_classification
 from dem.plotting import plot_disc_2d
 
 
@@ -25,7 +25,8 @@ def train_occ(
         setup=setup,
         noise_scale=noise_scale,
     )
-    return run_training(occ, setup.n_epochs, setup.outdir)
+    trainer = run_training(occ, setup.n_epochs, setup.outdir)
+    return occ, trainer
 
 
 class UnaryKDEClassification(Learner):
@@ -53,52 +54,44 @@ class UnaryKDEClassification(Learner):
         x_noisy = self.generate_noisy_data(x_real)  # float32 tensor with size [B, D]
         return x_real, x_noisy
 
-    @staticmethod
-    def target_labels(y_pred):
-        N = int(len(y_pred) / 2)
-        y_target = np.array(N * [1] + N * [0], dtype=np.uint8)
-        return y_target
-
     def forward(self, data_batch):
         x_real, x_noisy = self.create_x(data_batch)
         self.model.set_data(x0=x_noisy, x1=x_real)
-        log_p1_real = self.model(x_real, log=True)  # float32 tensor with size [B]
-        log_p1_noisy = self.model(x_noisy, log=True)  # float32 tensor with size [B]
-        loss = log_p1_real + torch.expm1(-log_p1_noisy)
-        x = torch.vstack((x_real, x_noisy)).cpu().detach().numpy()
-        y = torch.cat((log_p1_real, log_p1_noisy))
-        y = torch.exp(y).cpu().detach().numpy()
-        return x, y, loss.mean()
+        x, y_target = create_classification(x_real, x_noisy)
+        y_pred = self.model(x)  # classify
+        loss = binary_cross_entropy(y_pred, y_target, reduction="mean")
+        return x, y_target, y_pred, loss
 
     def training_step(self, data_batch, batch_idx):
-        _, _, loss = self.forward(data_batch)
+        _, _, _, loss = self.forward(data_batch)
         return loss
 
     def validation_step(self, data_batch, batch_idx):
-        x, y_pred, loss = self.forward(data_batch)
-        y_target = self.target_labels(y_pred)
+        x, y_target, y_pred, loss = self.forward(data_batch)
+        y_target = tensor_to_numpy(y_target).astype(np.uint8)
+        y_pred = tensor_to_numpy(y_pred)
+        x = tensor_to_numpy(x)
         acc = accuracy(y_target, y_pred, prob=True)
         self.log("valid_loss", loss)
         self.log("valid_accuracy", acc)
         self.log("bandwidth", self.model.kde.bw)
         pf = self.plot_freq
         if (pf > 0) and (self.current_epoch % pf == 0):
-            self.visualize(x, y_pred)
+            self.visualize(x, y_target)
         return loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
-    def visualize(self, x, y_pred):
+    def visualize(self, x, y_target):
         fn = self.create_figure_name()
-        y_true = self.target_labels(y_pred)
         title = self.epoch_str() + (", bw = %1.4f" % self.model.kde.bw)
         fig_dir = os.path.join(self.outdir, "figs")
         if self.model.D == 2:
             plot_disc_2d(
                 self.model,
                 x,
-                y_true,
+                y_target,
                 save_name=fn,
                 save_dir=fig_dir,
                 title=title,

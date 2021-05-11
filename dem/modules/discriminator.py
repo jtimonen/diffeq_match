@@ -5,7 +5,6 @@ import torch.nn as nn
 
 from dem.modules.networks import LeakyReluNetTwoLayer
 from dem.modules.kde import KDE, ParamKDE
-from dem.utils.math import log_eps
 
 
 class Discriminator(nn.Module, abc.ABC):
@@ -68,9 +67,7 @@ class KdeDiscriminator(Discriminator):
         x1 = torch.from_numpy(x1).float()
         self.set_data(x0, x1)
 
-    def forward(self, x: torch.Tensor, log: bool = False):
+    def forward(self, x: torch.Tensor):
         score_class0 = self.kde(x, self.x0)
         score_class1 = self.kde(x, self.x1)
-        log_p_class1 = log_eps(score_class1) - log_eps(score_class0 + score_class1)
-        val = log_p_class1 if log else torch.exp(log_p_class1)
-        return val
+        return score_class1 / (score_class0 + score_class1)

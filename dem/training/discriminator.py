@@ -5,10 +5,11 @@ from torch.nn.functional import binary_cross_entropy
 
 from .learner import Learner
 from .setup import TrainingSetup, run_training
-from dem.modules.discriminator import Discriminator
+from dem.modules.discriminator import Discriminator, KdeDiscriminator
 from dem.data.dataset import NumpyDataset
 from dem.utils.math import mvrnorm
-from dem.utils.utils import accuracy, tensor_to_numpy, create_classification
+from dem.utils.utils import tensor_to_numpy
+from dem.utils.classification import accuracy, create_classification
 from dem.plotting import plot_disc_2d
 
 
@@ -18,18 +19,21 @@ def train_occ(
     noise_scale: float = 1.0,
     **training_setup_kwargs
 ):
+    """Train a binary classifier using data from only one class.
+
+    :param model: The discriminator to train.
+    :param x: Numpy array of shape (N, D), containing N observations belonging
+    to class 1.
+    :param noise_scale: Standard deviation of noise added to x to generate fake data.
+    """
     ds = NumpyDataset(x)
     setup = TrainingSetup(ds, None, **training_setup_kwargs)
-    occ = UnaryKDEClassification(
-        model=model,
-        setup=setup,
-        noise_scale=noise_scale,
-    )
+    occ = UnaryClassification(model, setup, noise_scale)
     trainer = run_training(occ, setup.n_epochs, setup.outdir)
     return occ, trainer
 
 
-class UnaryKDEClassification(Learner):
+class UnaryClassification(Learner):
     def __init__(
         self,
         model: Discriminator,
@@ -44,6 +48,10 @@ class UnaryKDEClassification(Learner):
         self.plot_contour = True
         self.plot_points = True
 
+    @property
+    def is_kde(self):
+        return isinstance(self.model, KdeDiscriminator)
+
     def generate_noisy_data(self, x: torch.Tensor):
         scale = self.noise_scale * torch.ones_like(x)
         x_noisy = mvrnorm(x, scale)
@@ -56,7 +64,8 @@ class UnaryKDEClassification(Learner):
 
     def forward(self, data_batch):
         x_real, x_noisy = self.create_x(data_batch)
-        self.model.set_data(x0=x_noisy, x1=x_real)
+        if self.is_kde:
+            self.model.set_data(x0=x_noisy, x1=x_real)
         x, y_target = create_classification(x_real, x_noisy)
         y_pred = self.model(x)  # classify
         loss = binary_cross_entropy(y_pred, y_target, reduction="mean")
@@ -72,20 +81,26 @@ class UnaryKDEClassification(Learner):
         y_pred = tensor_to_numpy(y_pred)
         x = tensor_to_numpy(x)
         acc = accuracy(y_target, y_pred, prob=True)
-        self.log("valid_loss", loss)
-        self.log("valid_accuracy", acc)
-        self.log("bandwidth", self.model.kde.bw)
+        self.log_metrics(loss.item(), acc)
         pf = self.plot_freq
         if (pf > 0) and (self.current_epoch % pf == 0):
             self.visualize(x, y_target)
         return loss
+
+    def log_metrics(self, loss: float, acc: float):
+        self.log("valid_loss", loss)
+        self.log("valid_accuracy", acc)
+        if self.is_kde:
+            self.log("bandwidth", self.model.kde.bw)
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
     def visualize(self, x, y_target):
         fn = self.create_figure_name()
-        title = self.epoch_str() + (", bw = %1.4f" % self.model.kde.bw)
+        title = self.epoch_str()
+        if self.is_kde:
+            title = title + (", bw = %1.4f" % self.model.kde.bw)
         fig_dir = os.path.join(self.outdir, "figs")
         if self.model.D == 2:
             plot_disc_2d(

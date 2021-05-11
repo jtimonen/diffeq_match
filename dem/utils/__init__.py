@@ -1,6 +1,6 @@
 from .settings import set_device, get_device, session_info
 from .sim import sim
-from .utils import accuracy, split_by_labels
+from .classification import accuracy, split_by_labels
 from .logs import read_logged_scalar, read_logged_events
 
 # Exports

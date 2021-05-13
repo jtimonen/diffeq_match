@@ -93,3 +93,15 @@ class LeakyReluNetTwoLayer(nn.Module):
     def forward(self, z: torch.Tensor):
         """Pass the tensor z through the network."""
         return self.layers(z)
+
+
+class Reverser(nn.Module):
+    """Reverses the sign of module output."""
+
+    def __init__(self, module: nn.Module):
+        super().__init__()
+        self.module = module
+        self.n_input = module.n_input
+
+    def forward(self, x: torch.Tensor):
+        return -self.module(x)

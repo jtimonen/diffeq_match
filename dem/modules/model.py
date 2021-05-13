@@ -1,38 +1,66 @@
 import torch
 import torch.nn as nn
+import numpy as np
+from dem.modules.vectorfield import VectorField, StochasticVectorField
+from dem.modules.networks import TanhNetTwoLayer, Reverser
+from dem.utils.utils import tensor_to_numpy
 
-from dem.data import PriorInfo, create_prior_info
-from dem.modules.vectorfield import Reverser, VectorField
-from dem.modules.discriminator import Discriminator, KdeDiscriminator
 
-
-def create_model(D: int, n_hidden: int = 32, z_init=None, z_terminal=None):
+def create_model(D: int, n_hidden: int = 32, stochastic: bool = False):
     """Construct a model with some default settings."""
-    vector_field = VectorField(D, n_hidden)
-    prior_info = create_prior_info(z_init, z_terminal)
-    disc = KdeDiscriminator(D)
-    model = GenModel(vector_field, prior_info, disc)
+    net_f = TanhNetTwoLayer(D, D, n_hidden)
+    model = GenModel(net_f, stochastic)
     return model
 
 
 class GenModel(nn.Module):
     """Main model module."""
 
-    def __init__(
-        self, vector_field: VectorField, prior_info: PriorInfo, disc: Discriminator
-    ):
+    def __init__(self, net_f: nn.Module, stochastic: bool = False):
         super().__init__()
-        self.prior_info = prior_info
-        self.field = vector_field
-        self.field_reverse = Reverser(self.field)
-        self.D = vector_field.D
-        self.disc = disc
+        self.stochastic = stochastic
+        if stochastic:
+            self.field = StochasticVectorField(net_f)
+        else:
+            self.field = VectorField(net_f)
+        self.field_reverse = VectorField(Reverser(net_f))
 
-    def set_bandwidth(self, z_data):
-        self.kde.set_bandwidth(z_data)
+    def _traj_forward(self, y_init: torch.Tensor, ts, sde: bool, **kwargs):
+        if sde:
+            if not self.is_stochastic:
+                raise RuntimeError("vector field is not stochastic!")
+            return self.field.sdeint(y_init, ts, **kwargs)
+        else:
+            return self.field.odeint(y_init, ts, **kwargs)
 
-    def forward(self, N: int):
+    def _traj_backward(self, y_init: torch.Tensor, ts, **kwargs):
+        return self.field_reverse.odeint(y_init, ts, **kwargs)
+
+    def traj(
+        self, y_init: torch.Tensor, ts, sde=False, backward: bool = False, **kwargs
+    ):
+        if not backward:
+            return self._traj_forward(y_init, ts, sde=sde, **kwargs)
+        else:
+            if sde:
+                raise RuntimeError("cannot integrate sde backwards!")
+            return self._traj_backward(y_init, ts, **kwargs)
+
+    @torch.no_grad()
+    def traj_numpy(
+        self,
+        y_init: np.ndarray,
+        ts: np.ndarray,
+        sde=False,
+        backward: bool = False,
+        **kwargs
+    ):
+        y_init = torch.from_numpy(y_init).float()
+        ts = torch.from_numpy(ts).float()
+        y_traj = self.traj(y_init, ts, sde, backward, **kwargs)
+        return tensor_to_numpy(y_traj)
+
+    def forward(self, y_init: torch.Tensor, N: int = 60):
         ts = torch.linspace(0, 1, N).float()
-        z_init = self.draw_init(N)
-        z_samp = self.traj(z_init, ts, sde=True, forward=True)
-        return torch.transpose(z_samp.diagonal(), 0, 1)
+        y_traj = self.traj(y_init, ts, sde=True, forward=True)
+        return torch.transpose(y_traj.diagonal(), 0, 1)

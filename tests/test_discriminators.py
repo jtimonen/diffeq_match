@@ -15,31 +15,33 @@ def test_neural_discriminator():
 
 
 def test_kde_discriminator():
+    bw = 0.2
     x, labels = make_moons(100, noise=0.2)
     x0, x1 = dem.split_by_labels(x, labels)
-    disc = dem.KdeDiscriminator(D=2, bw_init=1.0, trainable=False)
+    disc = dem.KdeDiscriminator(D=2, bw_init=bw, trainable=False)
     disc.set_data_numpy(x0, x1)
     y_pred, y_prob = disc.classify(x)
     acc = dem.accuracy(y_pred=y_pred, y_true=labels)
     assert acc >= 0.0, "accuracy should be non-negative"
-    dem.plot_disc_2d(disc, x, labels, save_name="test_out/kde_2d.png")
+    title = "bandwidth = " + str(bw)
+    dem.plot_disc_2d(disc, x, labels, save_name="test_out/kde_2d.png", title=title)
 
 
 def test_kde_discriminator_training():
     x, labels = make_moons(500, noise=0.2)
     x0, _ = dem.split_by_labels(x, labels)
     disc = dem.KdeDiscriminator(D=2, bw_init=1.0, trainable=True)
-    out, _ = dem.train_occ(disc, x0, plot_freq=1, n_epochs=30, outdir="test_out/kde")
+    out, _ = dem.train_occ(disc, x0, plot_freq=10, n_epochs=50, outdir="test_out/kde")
     ea = out.read_logged_events()
     df = out.read_logged_scalar(name="valid_accuracy")
-    assert df.shape[0] == 30, "logs must have a row for each epoch!"
+    assert df.shape[0] == 50, "logs must have a row for each epoch!"
 
 
 def test_nn_discriminator_training():
     x, labels = make_moons(500, noise=0.2)
     _, x1 = dem.split_by_labels(x, labels)
     disc = dem.NeuralDiscriminator(D=2)
-    out, _ = dem.train_occ(disc, x1, plot_freq=1, n_epochs=30, outdir="test_out/nn")
+    out, _ = dem.train_occ(disc, x1, plot_freq=10, n_epochs=50, outdir="test_out/nn")
     ea = out.read_logged_events()
     df = out.read_logged_scalar(name="valid_accuracy")
-    assert df.shape[0] == 30, "logs must have a row for each epoch!"
+    assert df.shape[0] == 50, "logs must have a row for each epoch!"

@@ -28,13 +28,14 @@ def plot_disc_2d(
     title="",
     points=True,
     contour=True,
+    figsize=(7.0, 5.5),
     **kwargs
 ):
     """Visualize discriminator output."""
     if cm is None:
         cm = plt.cm.RdBu
     X, Y, Z, Z_label = classify_at_2d_grid_around(disc, x, grid_size)
-    fig, ax = plt.subplots(1, 1, figsize=(7.0, 6.5))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     if not prob:
         Z = Z_label
     if scatter_kwargs is None:
@@ -42,7 +43,9 @@ def plot_disc_2d(
     if scatter_colors is None:
         scatter_colors = ["#FF0000", "#0000FF"]
     if contour:
-        ax.contourf(X, Y, Z, cmap=cm, alpha=0.8)
+        levels = [h * 0.05 for h in range(0, 21)]
+        cs = ax.contourf(X, Y, Z, cmap=cm, alpha=0.75, levels=levels)
+        fig.colorbar(cs, ax=ax)
     pp = Plotter2d()
     pp.add_pointsets(
         x=x,

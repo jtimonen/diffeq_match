@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
@@ -105,3 +106,21 @@ class Reverser(nn.Module):
 
     def forward(self, x: torch.Tensor):
         return -self.module(x)
+
+
+class ConstantLinear(nn.Module):
+    """Linear operation Ax+b where A and b are constant.
+
+    :param weight: the matrix A, shape (out_features,in_features)
+    :param bias: vector b, shape (out_features)
+    """
+
+    def __init__(self, weight: np.ndarray, bias: np.ndarray):
+        super().__init__()
+        self.weight = torch.from_numpy(weight).float()
+        self.bias = torch.from_numpy(bias).float()
+        self.n_input = weight.shape[1]
+        self.n_output = weight.shape[0]
+
+    def forward(self, x: torch.Tensor):
+        return torch.nn.functional.linear(x, weight=self.weight, bias=self.bias)

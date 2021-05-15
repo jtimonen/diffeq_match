@@ -22,6 +22,7 @@ functions = [
     "train_model",
     "accuracy",
     "split_by_labels",
+    "plot_all",
 ]
 
 classes = [

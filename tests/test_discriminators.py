@@ -1,8 +1,5 @@
 from sklearn.datasets import make_moons
 import dem
-import os
-
-os.mkdir("test_out")
 
 
 def test_neural_discriminator():
@@ -23,7 +20,14 @@ def test_kde_discriminator():
     acc = dem.accuracy(y_pred=y_pred, y_true=labels)
     assert acc >= 0.0, "accuracy should be non-negative"
     title = "bandwidth = " + str(bw)
-    dem.plot_disc_2d(disc, x, labels, save_name="test_out/kde_2d.png", title=title)
+    dem.plot_disc_2d(
+        disc,
+        x,
+        labels,
+        save_dir="test_out",
+        save_name="kde_2d.png",
+        title=title,
+    )
 
 
 def test_kde_discriminator_training():

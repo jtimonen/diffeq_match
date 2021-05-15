@@ -39,12 +39,17 @@ class GenModel(nn.Module):
     def traj(
         self, y_init: torch.Tensor, ts, sde=False, backward: bool = False, **kwargs
     ):
+        """Compute ODE or SDE trajectories
+
+        :return: a torch tensor with shape (n_trajectories, n_points, n_dims)
+        """
         if not backward:
-            return self._traj_forward(y_init, ts, sde=sde, **kwargs)
+            out = self._traj_forward(y_init, ts, sde=sde, **kwargs)
         else:
             if sde:
                 raise RuntimeError("cannot integrate sde backwards!")
-            return self._traj_backward(y_init, ts, **kwargs)
+            out = self._traj_backward(y_init, ts, **kwargs)
+        return out.permute(1, 0, 2)
 
     @torch.no_grad()
     def traj_numpy(

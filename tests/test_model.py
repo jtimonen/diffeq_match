@@ -1,5 +1,6 @@
 import dem
 import numpy as np
+from dem.modules.networks import ConstantLinear
 
 
 def test_model_creation():
@@ -8,5 +9,23 @@ def test_model_creation():
     ts = np.linspace(0, 10, 30)
     y_traj = model.traj_numpy(z, ts)
     y_back = model.traj_numpy(z, ts, backward=True)
-    assert y_traj.shape == (30, 10, 2)
-    assert y_back.shape == (30, 10, 2)
+    assert y_traj.shape == (10, 30, 2)
+    assert y_back.shape == (10, 30, 2)
+
+
+def test_ode_traj():
+    A = np.array([[-0.5, -1.5], [2.0, -0.5]], dtype=np.float32)
+    b = np.zeros(2, dtype=np.float32)
+    net_f = ConstantLinear(A, b)
+    model = dem.GenModel(net_f)
+    z = 1 + 0.1 * np.random.normal(size=(10, 2))
+    ts = np.linspace(0, 8, 100)
+    y_traj = model.traj_numpy(z, ts)
+    y_back = model.traj_numpy(z, ts, backward=True)
+    XLIM = [-1.0, 1.5]
+    dem.plot_all(
+        trajectories=y_traj, save_dir="test_out", save_name="traj.png", xlim=XLIM
+    )
+    dem.plot_all(
+        trajectories=y_back, save_dir="test_out", save_name="back.png", xlim=XLIM
+    )

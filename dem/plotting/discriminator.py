@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 import numpy as np
-from hdviz import create_grid_around, draw_plot, Plotter2d
+from hdviz import create_grid_around, draw_plot, create_plotter
 
 
 def classify_at_2d_grid_around(disc, x: np.ndarray, M: int = 30):
@@ -46,7 +46,7 @@ def plot_disc_2d(
         levels = [h * 0.05 for h in range(0, 21)]
         cs = ax.contourf(X, Y, Z, cmap=cm, alpha=0.75, levels=levels)
         fig.colorbar(cs, ax=ax)
-    pp = Plotter2d()
+    pp = create_plotter(2)
     pp.add_pointsets(
         x=x,
         categories=true_labels,

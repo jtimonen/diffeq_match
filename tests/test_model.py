@@ -22,10 +22,11 @@ def test_ode_traj():
     ts = np.linspace(0, 8, 100)
     y_traj = model.traj_numpy(z, ts)
     y_back = model.traj_numpy(z, ts, backward=True)
-    XLIM = [-1.0, 1.5]
-    dem.plot_all(
-        trajectories=y_traj, save_dir="test_out", save_name="traj.png", xlim=XLIM
+    dem.visualize(
+        trajectories=y_traj, save_dir="test_out", save_name="traj.png", xlim=[-1.0, 1.5]
     )
-    dem.plot_all(
-        trajectories=y_back, save_dir="test_out", save_name="back.png", xlim=XLIM
+    dem.visualize(
+        trajectories=y_back,
+        save_dir="test_out",
+        save_name="back.png",
     )

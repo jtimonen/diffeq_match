@@ -5,58 +5,6 @@ from hdviz import draw_plot, create_grid_around
 import torch
 
 
-def determine_dimension(points, trajectories):
-    if points is None:
-        if trajectories is None:
-            raise RuntimeError("points and trajectories can't both be None!")
-        D = trajectories.shape[2]
-    else:
-        D = points.shape[1]
-    return D
-
-
-def create_plotter(points, trajectories):
-    D = determine_dimension(points, trajectories)
-    if D == 2:
-        return hdviz.Plotter2d()
-    elif D == 3:
-        return hdviz.Plotter3d()
-    else:
-        return hdviz.PlotterNd(num_dims=D)
-
-
-def plot_all(
-    points=None,
-    categories=None,
-    labels=None,
-    u=None,
-    v=None,
-    trajectories=None,
-    xlim=None,
-    ylim=None,
-    save_name=None,
-    save_dir=".",
-    **save_kwargs
-):
-    ptr = create_plotter(points, trajectories)
-    if points is not None:
-        ptr.add_pointsets(points, categories=categories, labels=labels, alpha=0.7)
-    if u is not None:
-        ptr.add_quiverset(u, v, alpha=0.5)
-    if trajectories is not None:
-        ptr.add_lineset(trajectories, alpha=0.3)
-        x_first = trajectories[:, 0, :]
-        ptr.add_pointset(x_first, marker="x", color="k", alpha=0.3, label="start")
-    if xlim is not None:
-        if ylim is None:
-            ylim = xlim
-        ax_limits = [xlim, ylim]
-    else:
-        ax_limits = None
-    ptr.plot(axis_limits=ax_limits)
-    hdviz.draw_plot(save_name, save_dir, **save_kwargs)
-
-
 def plot_state_2d(model, z_samp, z_data, idx_epoch, loss, save_dir=".", **kwargs):
     u = create_grid_around(z_data, 20)
     v = model.f_numpy(u)

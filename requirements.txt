@@ -16,8 +16,5 @@ torchsde @ git+https://github.com/google-research/torchsde.git
 hdviz @ git+https://github.com/jtimonen/hdviz.git
 
 tensorboard>=2.4.1
-dem~=0.0.3
-torchsde~=0.2.5
-hdviz~=0.0.5
-setuptools~=56.0.0
-scanpy~=1.7.2
+setuptools>=56.0.0
+scanpy>=1.7.2

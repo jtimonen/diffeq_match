@@ -1,37 +1,66 @@
 import os
+
+import numpy as np
 import torch
 import torch.nn as nn
-import pytorch_lightning as pl
+from torch.optim.adam import Adam
 
+from dem.modules import GenModel, KdeDiscriminator, NeuralDiscriminator
+from dem.modules.discriminator import Discriminator
 from dem.data.dataloader import create_dataloader
-from .callbacks import MyCallback
-from .setup import TrainingSetup
+from dem.data.dataset import NumpyDataset
+from .setup import TrainingSetup, run_training
 from .learner import Learner
 
 
-def train_model(model, z_data, z_gen, **training_setup_kwargs):
-    """Train a model."""
-    model.set_bandwidth(z_data)
-    setup = TrainingSetup(**training_setup_kwargs)
-    save_path = learner.outdir
+def train_model(
+    model: GenModel,
+    disc: Discriminator,
+    data: np.ndarray,
+    gen: np.ndarray,
+    **training_setup_kwargs
+):
+    """Train a model.
 
-    learner = GANTraining(
-        model,
+    :param model: model to be trained
+    :param disc: discriminator
+    :param data: a numpy array with shape (num_obs, num_dims)
+    :param gen: a numpy array with shape (num_gen, num_dims)
+    :param training_setup_kwargs: keyword arguments to `TrainingSetup`
+    """
+    ds = NumpyDataset(data)
+    setup = TrainingSetup(ds, **training_setup_kwargs)
+    ds_gen = NumpyDataset(gen)
+    genloader = create_dataloader(
+        ds_gen,
+        batch_size=setup.batch_size,
+        num_workers=setup.num_workers,
+        pin_memory=setup.pin_memory,
+        genloader=True,
     )
-    trainer.fit(learner)
+    if disc is None:
+        disc = NeuralDiscriminator(D=model.D)
+    occ = GANTraining(model, disc, setup, genloader)
+    trainer = run_training(occ, setup.n_epochs, setup.outdir)
+    return occ, trainer
 
 
 class GANTraining(Learner):
-    def __init__(self, model: nn.Module, setup: TrainingSetup, gen_loader):
+    def __init__(
+        self, model: nn.Module, disc: Discriminator, setup: TrainingSetup, genloader
+    ):
         super().__init__(setup)
         self.model = model
+        self.disc = disc
         self.lr = setup.lr
         self.lr_disc = setup.lr_disc
         self.n_epochs = setup.n_epochs
-        self.gen_loader = gen_loader
+        self.genloader = genloader
 
-    def forward(self, n_draws: int):
-        return self.model(n_draws)
+    def configure_optimizers(self):
+        opt_g = Adam(self.model.parameters(), lr=self.lr)
+        opt_d = Adam(self.disc.parameters(), lr=self.lr_disc)
+        return opt_g, opt_d
 
     # KDE Stuff
     def kde_terms(self, z_data, z_samples):

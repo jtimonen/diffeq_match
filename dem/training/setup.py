@@ -4,7 +4,8 @@ from torch.utils.data.dataset import random_split
 
 def run_training(module: LightningModule, n_epochs: int, outdir):
     trainer = Trainer(max_epochs=n_epochs, min_epochs=n_epochs, default_root_dir=outdir)
-    trainer.fit(module)
+    if n_epochs > 0:
+        trainer.fit(module)
     return trainer
 
 

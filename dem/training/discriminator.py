@@ -27,7 +27,7 @@ def train_occ(
     :param noise_scale: Standard deviation of noise added to x to generate fake data.
     """
     ds = NumpyDataset(x)
-    setup = TrainingSetup(ds, None, **training_setup_kwargs)
+    setup = TrainingSetup(ds, **training_setup_kwargs)
     occ = UnaryClassification(model, setup, noise_scale)
     trainer = run_training(occ, setup.n_epochs, setup.outdir)
     return occ, trainer
@@ -40,7 +40,7 @@ class UnaryClassification(Learner):
         setup: TrainingSetup,
         noise_scale: float,
     ):
-        super().__init__(setup)
+        super().__init__(setup)  # set dataloaders etc
         self.model = model
         self.lr = setup.lr
         self.n_epochs = setup.n_epochs

@@ -1,7 +1,6 @@
 import os
 import abc
 import pytorch_lightning as pl
-
 from dem.data.dataloader import create_dataloader
 from .setup import TrainingSetup
 from dem.utils import read_logged_scalar, read_logged_events
@@ -15,12 +14,14 @@ class Learner(pl.LightningModule, abc.ABC):
             shuffle=True,
             batch_size=setup.batch_size,
             num_workers=setup.num_workers,
+            pin_memory=setup.pin_memory,
         )
         valid_loader = create_dataloader(
             setup.valid_dataset,
             shuffle=False,
             batch_size=None,
             num_workers=setup.num_workers,
+            pin_memory=setup.pin_memory,
         )
         self.train_loader = train_loader
         self.valid_loader = valid_loader

@@ -29,4 +29,5 @@ def test_ode_traj():
         trajectories=y_back,
         save_dir="test_out",
         save_name="back.png",
+        lines_kwargs=dict(linewidth=3),
     )

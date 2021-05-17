@@ -5,68 +5,30 @@ import pytorch_lightning as pl
 
 from dem.data.dataloader import create_dataloader
 from .callbacks import MyCallback
+from .setup import TrainingSetup
+from .learner import Learner
 
 
-def train_model(
-    model,
-    z_data,
-    batch_size=128,
-    n_epochs: int = 400,
-    lr: float = 0.005,
-    plot_freq=0,
-):
+def train_model(model, z_data, z_gen, **training_setup_kwargs):
+    """Train a model."""
     model.set_bandwidth(z_data)
-    z_data = torch.from_numpy(z_data).float()
-    learner = TrainingSetup(
-        model,
-        z_data,
-        batch_size,
-        lr,
-        plot_freq,
-    )
+    setup = TrainingSetup(**training_setup_kwargs)
     save_path = learner.outdir
 
-    checkpoint_callback = ModelCheckpoint(
-        verbose=True, monitor="valid_loss", mode="min", prefix="mod"
-    )
-
-    trainer = Trainer(
-        min_epochs=n_epochs,
-        max_epochs=n_epochs,
-        default_root_dir=save_path,
-        callbacks=[MyCallback(), checkpoint_callback],
+    learner = GANTraining(
+        model,
     )
     trainer.fit(learner)
 
 
-class TrainingSetup(pl.LightningModule):
-    def __init__(
-        self,
-        model: nn.Module,
-        z_data,
-        batch_size: int,
-        lr_init: float,
-        plot_freq=0,
-        outdir="out",
-    ):
-        super().__init__()
-        num_workers = 0
-        ds = MyDataset(z_data)
-        train_loader = create_dataloader(ds, batch_size, num_workers, shuffle=True)
-        valid_loader = create_dataloader(ds, None, num_workers, shuffle=False)
-        self.N = len(train_loader.dataset)
+class GANTraining(Learner):
+    def __init__(self, model: nn.Module, setup: TrainingSetup, gen_loader):
+        super().__init__(setup)
         self.model = model
-        # self.disc = disc
-        # if disc.D != self.model.D:
-        #    raise RuntimeError("Discriminator dimension incompatible with model!")
-        self.train_loader = train_loader
-        self.valid_loader = valid_loader
-        self.lr_init = lr_init
-        self.plot_freq = plot_freq
-
-        if not os.path.isdir(outdir):
-            os.mkdir(outdir)
-        self.outdir = outdir
+        self.lr = setup.lr
+        self.lr_disc = setup.lr_disc
+        self.n_epochs = setup.n_epochs
+        self.gen_loader = gen_loader
 
     def forward(self, n_draws: int):
         return self.model(n_draws)

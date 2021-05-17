@@ -1,7 +1,6 @@
 import os
 import numpy as np
-import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset, RandomSampler
 
 
 def load_data_txt(parent_dir, verbose=True):
@@ -25,13 +24,38 @@ def load_data_txt(parent_dir, verbose=True):
 
 
 def create_dataloader(
-    dataset: torch.utils.data.Dataset, batch_size=None, num_workers=None, shuffle=True
+    dataset: Dataset,
+    batch_size=None,
+    shuffle=True,
+    num_workers=None,
+    pin_memory=False,
+    genloader=False,
 ):
-    """Create a torch data loader."""
+    """Create a torch data loader.
+
+    :param dataset: The source dataset.
+    :param batch_size: Batch size (or number of samples to draw if genloader=True)
+    :param shuffle: Only has effect if genloader=False
+    :param num_workers: dataloader argument
+    :param pin_memory: dataloader argument
+    :param genloader: should this create the generative model loader which draws with
+    replacement
+    """
     N = len(dataset)
     if batch_size is None:
         batch_size = N
-    loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
-    )
+    if genloader:
+        num_samples = batch_size
+        sampler = RandomSampler(dataset, replacement=True, num_samples=num_samples)
+        loader = DataLoader(
+            dataset, sampler=sampler, num_workers=num_workers, pin_memory=pin_memory
+        )
+    else:
+        loader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+        )
     return loader

@@ -35,6 +35,8 @@ class TrainingSetup:
         lr_disc=None,
         p_valid=None,
         pin_memory=False,
+        b1: float = 0.005,
+        b2: float = 0.999,
     ):
         if lr_disc is None:
             lr_disc = lr
@@ -47,6 +49,8 @@ class TrainingSetup:
         self.outdir = outdir
         self.plot_freq = plot_freq
         self.pin_memory = pin_memory
+        self.b1 = b1
+        self.b2 = b2
 
     def __repr__(self):
         desc = "<TrainingSetup (lr=%1.4f, n_epochs=%d)>" % (self.lr, self.n_epochs)

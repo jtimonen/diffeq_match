@@ -40,14 +40,18 @@ def train_model(
     )
     if disc is None:
         disc = NeuralDiscriminator(D=model.D)
-    occ = GANTraining(model, disc, setup, genloader)
+    occ = GAN(model, disc, setup, genloader)
     trainer = run_training(occ, setup.n_epochs, setup.outdir)
     return occ, trainer
 
 
-class GANTraining(Learner):
+class GAN(Learner):
     def __init__(
-        self, model: nn.Module, disc: Discriminator, setup: TrainingSetup, genloader
+        self,
+        model: nn.Module,
+        disc: Discriminator,
+        setup: TrainingSetup,
+        genloader,
     ):
         super().__init__(setup)
         self.model = model
@@ -56,11 +60,12 @@ class GANTraining(Learner):
         self.lr_disc = setup.lr_disc
         self.n_epochs = setup.n_epochs
         self.genloader = genloader
+        self.betas = (setup.b1, setup.b2)
 
     def configure_optimizers(self):
-        opt_g = Adam(self.model.parameters(), lr=self.lr)
-        opt_d = Adam(self.disc.parameters(), lr=self.lr_disc)
-        return opt_g, opt_d
+        opt_g = Adam(self.model.parameters(), lr=self.lr, betas=self.betas)
+        opt_d = Adam(self.disc.parameters(), lr=self.lr_disc, betas=self.betas)
+        return [opt_g, opt_d], []
 
     # KDE Stuff
     def kde_terms(self, z_data, z_samples):
@@ -69,42 +74,38 @@ class GANTraining(Learner):
         return loss1, loss2
 
     # GAN STUFF
-    # def loss_generator(self, z_samples):
-    #    """Rather than training G to minimize log(1 − D(G(z))), we can train G to
-    #    maximize log D(G(z)). This objective function results in the same fixed point
-    #    of the dynamics of G and D but provides much stronger gradients early in
-    #    learning. (Goodfellow et al., 2014)
-    #    """
-    #    G_z = z_samples
-    #    D_G_z = self.disc(G_z)  # classify fake data
-    #    loss_fake = -torch.mean(log_eps(D_G_z))
-    #    return loss_fake
-    #
-    # def loss_discriminator(self, z_samples, z_data):
-    #    """Discriminator loss."""
-    #    D_x = self.disc(z_data)  # classify real data
-    #    G_z = z_samples
-    #    D_G_z = self.disc(G_z.detach())  # classify fake data
-    #   loss_real = -torch.mean(log_eps(D_x))
-    #   loss_fake = -torch.mean(log_eps(1 - D_G_z))
-    #   loss = 0.5 * (loss_real + loss_fake)
-    #   return loss
+    def loss_generator(self, z_samples):
+        """
+        Rather than training G to minimize `log(1 − D(G(z)))`, we can train G to
+        maximize `log D(G(z))`. This objective function results in the same fixed point
+        of the dynamics of `G` and `D` but provides much stronger gradients early in
+        learning. (Goodfellow et al., 2014)
+        """
+        G_z = z_samples
+        D_G_z = self.disc(G_z)  # classify fake data
+        loss_fake = -torch.mean(log_eps(D_G_z))
+        return loss_fake
 
-    def training_step(self, data_batch, batch_idx):
+    def loss_discriminator(self, z_samples, z_data):
+        """Discriminator loss."""
+        D_x = self.disc(z_data)  # classify real data
+        G_z = z_samples
+        D_G_z = self.disc(G_z.detach())  # classify fake data
+        loss_real = -torch.mean(log_eps(D_x))
+        loss_fake = -torch.mean(log_eps(1 - D_G_z))
+        loss = 0.5 * (loss_real + loss_fake)
+        return loss
+
+    def training_step(self, data_batch, batch_idx, optim_idx):
+        if optim_idx == 0:
+            self.generator_step(data_batch, batch_idx)
+        if optim_idx == 1:
+            self.discriminator_step(data_batch, batch_idx)
         z_data = data_batch
         N = z_data.size(0)
         z_fake = self.model(N)  # generate fake data
         lt1, lt2 = self.kde_terms(z_data, z_fake)
         return 0.5 * (lt1 + lt2)
-
-        # GAN STUFF
-        # if optimizer_idx == 0:
-        #    loss = self.loss_generator(z_fake)
-        # elif optimizer_idx == 1:
-        #    loss = self.loss_discriminator(z_fake, z_data)
-        # else:
-        #    raise RuntimeError("optimizer_idx must be 0 or 1!")
-        # return loss
 
     def validation_step(self, data_batch, batch_idx):
         z_data = data_batch

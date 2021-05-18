@@ -2,15 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 from dem.modules.vectorfield import VectorField, StochasticVectorField
-from dem.modules.networks import TanhNetTwoLayer, Reverser
+from dem.modules.networks import Reverser
 from dem.utils.utils import tensor_to_numpy
-
-
-def create_model(D: int, n_hidden: int = 32, stochastic: bool = False):
-    """Construct a model with some default settings."""
-    net_f = TanhNetTwoLayer(D, D, n_hidden)
-    model = GenModel(net_f, stochastic)
-    return model
 
 
 class GenModel(nn.Module):

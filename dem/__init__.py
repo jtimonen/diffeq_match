@@ -5,11 +5,12 @@ from dem.data import *
 from dem.training import *
 
 # Version defined here
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 # Exports
 functions = [
     "create_model",
+    "create_discriminator",
     "create_prior_info",
     "load_data_txt",
     "sim",
@@ -32,5 +33,6 @@ classes = [
     "NeuralDiscriminator",
     "VectorField",
     "StochasticVectorField",
+    "GAN",
 ]
 __all__ = functions + classes

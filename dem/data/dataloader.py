@@ -48,7 +48,11 @@ def create_dataloader(
         num_samples = batch_size
         sampler = RandomSampler(dataset, replacement=True, num_samples=num_samples)
         loader = DataLoader(
-            dataset, sampler=sampler, num_workers=num_workers, pin_memory=pin_memory
+            dataset,
+            sampler=sampler,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+            batch_size=num_samples,
         )
     else:
         loader = DataLoader(

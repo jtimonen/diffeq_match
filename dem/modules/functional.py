@@ -1,12 +1,26 @@
+import numpy as np
 from dem.modules.networks import TanhNetTwoLayer
-from dem.modules import GenModel, NeuralDiscriminator, KdeDiscriminator
+from dem.modules import (
+    GenerativeModel,
+    PriorInfo,
+    DynamicModel,
+    KdeDiscriminator,
+    NeuralDiscriminator,
+)
 
 
-def create_model(D: int, n_hidden: int = 32, stochastic: bool = False):
-    """Construct a model with some default settings."""
+def create_dynamics(D: int, n_hidden: int = 32, stochastic: bool = False):
+    """Create a vector field that has methods."""
     net_f = TanhNetTwoLayer(D, D, n_hidden)
-    model = GenModel(net_f, stochastic)
-    return model
+    return DynamicModel(net_f, stochastic)
+
+
+def create_model(x0: np.ndarray, n_hidden: int = 32, stochastic: bool = False):
+    """Construct a model with some default settings."""
+    D = x0.shape[1]
+    dyn = create_dynamics(D, n_hidden=n_hidden, stochastic=stochastic)
+    prior_info = PriorInfo(init=x0)
+    return GenerativeModel(dynamics=dyn, prior_info=prior_info)
 
 
 def create_discriminator(D: int, n_hidden: int = 64, kde=False, fixed_kde=False):

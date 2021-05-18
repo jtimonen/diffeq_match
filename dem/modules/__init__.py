@@ -1,12 +1,14 @@
 from .discriminator import KdeDiscriminator, NeuralDiscriminator
-from .model import GenModel
-from .functional import create_model, create_discriminator
+from .model import GenerativeModel, PriorInfo, DynamicModel
+from .functional import create_model, create_discriminator, create_dynamics
 from .vectorfield import VectorField, StochasticVectorField
 
 # Exports
-functions = ["create_model", "create_discriminator"]
+functions = ["create_model", "create_discriminator", "create_dynamics"]
 classes = [
-    "GenModel",
+    "GenerativeModel",
+    "PriorInfo",
+    "DynamicModel",
     "KdeDiscriminator",
     "NeuralDiscriminator",
     "VectorField",

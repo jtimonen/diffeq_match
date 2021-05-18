@@ -4,10 +4,11 @@ import numpy as np
 from dem.modules.vectorfield import VectorField, StochasticVectorField
 from dem.modules.networks import Reverser
 from dem.utils.utils import tensor_to_numpy
+from dem.data.dataset import NumpyDataset
 
 
-class GenModel(nn.Module):
-    """Main model module."""
+class DynamicModel(nn.Module):
+    """Dynamic part of the generative model."""
 
     def __init__(self, net_f: nn.Module, stochastic: bool = False):
         super().__init__()
@@ -62,3 +63,36 @@ class GenModel(nn.Module):
         ts = torch.linspace(0, 1, N).float()
         y_traj = self.traj(y_init, ts, sde=True, forward=True)
         return torch.transpose(y_traj.diagonal(), 0, 1)
+
+
+class PriorInfo:
+    """The prior information."""
+
+    def __init__(self, init: np.ndarray):
+        super().__init__()
+        self.init_data = NumpyDataset(init)
+
+    def draw(self, N: int, replace: bool = True):
+        N_prior = len(self.init_data)
+        inds = np.random.choice(N_prior, N, replace=replace)
+        return self.init_data[inds]
+
+
+class GenerativeModel(nn.Module):
+    """The generative model."""
+
+    def __init__(self, dynamics: DynamicModel, prior_info: PriorInfo):
+        super().__init__()
+        self.dynamics = dynamics
+        self.prior_info = prior_info
+
+    def generate_init(self, N: int, like=None):
+        if like is None:
+            like = torch.tensor([0.0], dtype=torch.float32)
+        init = self.prior_info.draw(N, replace=True)
+        init = torch.from_numpy(init).type_as(like)
+        return init
+
+    def forward(self, N: int, like=None):
+        init = self.generate_init(N=N, like=like)
+        return init

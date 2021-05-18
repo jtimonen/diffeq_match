@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.optim.adam import Adam
 
-from dem.modules import GenModel, KdeDiscriminator, NeuralDiscriminator
+from dem.modules import GenerativeModel, KdeDiscriminator, NeuralDiscriminator
 from dem.modules.discriminator import Discriminator
 from dem.data.dataloader import create_dataloader
 from dem.data.dataset import NumpyDataset
@@ -14,7 +14,7 @@ from .learner import Learner
 
 
 def train_model(
-    model: GenModel,
+    model: GenerativeModel,
     disc: Discriminator,
     data: np.ndarray,
     gen: np.ndarray,
@@ -48,10 +48,10 @@ def train_model(
 class GAN(Learner):
     def __init__(
         self,
-        model: nn.Module,
+        model: GenerativeModel,
         disc: Discriminator,
         setup: TrainingSetup,
-        genloader,
+        genloader: NumpyDataset,
     ):
         super().__init__(setup)
         self.model = model
@@ -96,11 +96,15 @@ class GAN(Learner):
         loss = 0.5 * (loss_real + loss_fake)
         return loss
 
+    def generate(self, data_batch, batch_idx):
+        self.prior_data
+
     def training_step(self, data_batch, batch_idx, optim_idx):
+
         if optim_idx == 0:
-            self.generator_step(data_batch, batch_idx)
+            self.generator_step(data_batch, gen_init_batch)
         if optim_idx == 1:
-            self.discriminator_step(data_batch, batch_idx)
+            self.discriminator_step(data_batch, gen_init_batch)
         z_data = data_batch
         N = z_data.size(0)
         z_fake = self.model(N)  # generate fake data

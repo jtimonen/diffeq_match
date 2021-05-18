@@ -5,13 +5,13 @@ from dem.data import *
 from dem.training import *
 
 # Version defined here
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 
 # Exports
 functions = [
     "create_model",
     "create_discriminator",
-    "create_prior_info",
+    "create_dynamics",
     "load_data_txt",
     "sim",
     "plot_sim",
@@ -27,7 +27,8 @@ functions = [
 ]
 
 classes = [
-    "GenModel",
+    "GenerativeModel",
+    "DynamicModel",
     "PriorInfo",
     "KdeDiscriminator",
     "NeuralDiscriminator",

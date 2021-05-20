@@ -8,7 +8,7 @@ D = 2
 N_gen = 12
 z = np.random.normal(size=(100, D))
 z0 = 1 + 0.3 * np.random.normal(size=(N_gen, D))
-generator = dem.create_model(x0=z0)
+generator = dem.create_model(init=z0)
 disc = dem.create_discriminator(D=D)
 
 

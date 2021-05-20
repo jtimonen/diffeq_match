@@ -5,7 +5,7 @@ from dem.data import *
 from dem.training import *
 
 # Version defined here
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 # Exports
 functions = [
@@ -35,5 +35,6 @@ classes = [
     "VectorField",
     "StochasticVectorField",
     "GAN",
+    "Stage",
 ]
 __all__ = functions + classes

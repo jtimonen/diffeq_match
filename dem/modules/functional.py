@@ -6,6 +6,7 @@ from dem.modules import (
     DynamicModel,
     KdeDiscriminator,
     NeuralDiscriminator,
+    Stage,
 )
 
 
@@ -15,19 +16,21 @@ def create_dynamics(D: int, n_hidden: int = 32, stochastic: bool = False):
     return DynamicModel(net_f, stochastic)
 
 
-def create_model(x0: np.ndarray, n_hidden: int = 32, stochastic: bool = False):
+def create_model(init: np.ndarray, n_hidden: int = 32, stages=None):
     """Construct a model with some default settings."""
-    if x0 is None:
-        x0 = np.array([[0.0, 0.0]])
-    D = x0.shape[1]
-    dyn = create_dynamics(D, n_hidden=n_hidden, stochastic=stochastic)
-    prior_info = PriorInfo(init=x0)
-    return GenerativeModel(dynamics=dyn, prior_info=prior_info)
+    if init is None:
+        init = np.array([[0.0, 0.0]])
+    if stages is None:
+        stages = [Stage()]
+    D = init.shape[1]
+    is_stochastic = any([s.sde for s in stages])
+    dyn = create_dynamics(D, n_hidden=n_hidden, stochastic=is_stochastic)
+    prior_info = PriorInfo(init=init)
+    return GenerativeModel(dynamics=dyn, prior_info=prior_info, stages=stages)
 
 
 def create_discriminator(D: int, n_hidden: int = 64, kde=False, fixed_kde=False):
     """Construct a discriminator with some default settings."""
-    net_f = TanhNetTwoLayer(D, D, n_hidden)
     if fixed_kde:
         disc = KdeDiscriminator(D=D, trainable=False)
     elif kde:

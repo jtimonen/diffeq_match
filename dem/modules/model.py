@@ -7,6 +7,47 @@ from dem.utils.utils import tensor_to_numpy, add_noise
 from dem.data.dataset import NumpyDataset
 
 
+class Stage:
+    """Stage of a generative model."""
+
+    def __init__(
+        self,
+        sde: bool = False,
+        backwards: bool = False,
+        t_max: float = 1.0,
+        uniform: bool = True,
+        sigma: float = 0.0,
+    ):
+        if sde and backwards:
+            raise ValueError("Cannot create a Stage with sde=True and backwards=True")
+        assert t_max > 0.0, "t_max must be positive!"
+        self.sde = sde
+        self.backwards = backwards
+        self.uniform = uniform
+        self.t_max = t_max
+        self.sigma = sigma
+
+    def description(self):
+        str0 = str(round(self.sigma, 3))
+        str1 = "SDE" if self.sde else "ODE"
+        str2 = "backwards" if self.backwards else "forward"
+        str3 = str(round(self.t_max, 3))
+        if self.sigma > 0.0:
+            desc = (
+                "Add Gaussian noise with std" + str0 + "to initial "
+                "values of the stage."
+            )
+        else:
+            desc = ""
+        desc += "Integrate " + str1 + " " + str2 + " for time " + str3 + "."
+        if self.uniform:
+            desc += " Return outputs at times [0, ..., " + str3 + "] uniformly."
+        return desc
+
+    def __repr__(self):
+        return "<Stage: " + self.description() + ">"
+
+
 class PriorInfo:
     """The prior information."""
 
@@ -31,6 +72,15 @@ class DynamicModel(nn.Module):
         else:
             self.field = VectorField(net_f)
         self.field_reverse = VectorField(Reverser(net_f))
+
+    def description(self):
+        str0 = str(self.stochastic)
+        str1 = str(type(self.field.net_f).__name__)
+        desc = "DynamicModel(stochastic=" + str0 + ", net_f=" + str1 + ")"
+        return desc
+
+    def __repr__(self):
+        return "<" + self.description() + ">"
 
     def _traj_forward(self, y_init: torch.Tensor, ts, sde: bool, **kwargs):
         if sde:
@@ -85,43 +135,6 @@ class DynamicModel(nn.Module):
         return y_traj[:, 1, :]
 
 
-class Stage:
-    """Stage of a generative model."""
-
-    def __init__(
-        self,
-        sde: bool = False,
-        backwards: bool = False,
-        t_max: float = 1.0,
-        uniform: bool = True,
-        sigma: float = 0.0,
-    ):
-        self.sde = sde
-        self.backwards = backwards
-        self.uniform = uniform
-        self.t_max = t_max
-        self.sigma = sigma
-
-    def description(self):
-        str1 = "SDE" if self.sde else "ODE"
-        str2 = "backwards" if self.backwards else "forward"
-        str3 = str(self.t_max)
-        if self.sigma > 0:
-            desc = (
-                "Add Gaussian noise with std" + str(self.sigma) + "to initial "
-                "values of the stage."
-            )
-        else:
-            desc = ""
-        desc += "Integrate " + str1 + " " + str2 + " for time " + str3 + "."
-        if self.uniform:
-            desc += " Return outputs at times [0, ..., " + str3 + "] uniformly."
-        return desc
-
-    def __repr__(self):
-        return "<Stage: " + self.description() + ">"
-
-
 class GenerativeModel(nn.Module):
     """The generative model."""
 
@@ -147,7 +160,7 @@ class GenerativeModel(nn.Module):
         return len(self.stages)
 
     def __repr__(self):
-        desc = "A generative model with the following stages:\n"
+        desc = "GenerativeModel with " + self.dynamics.description() + ". Stages:\n"
         for s in self.stages:
             desc += " - " + s.description() + "\n"
         return desc

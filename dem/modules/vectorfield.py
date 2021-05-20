@@ -37,7 +37,7 @@ class StochasticVectorField(VectorField):
         super().__init__(net_f)
         self.noise_type = "diagonal"
         self.sde_type = "ito"
-        ln = torch.Tensor([np.log(init_diffusion)], dtype=torch.float32)
+        ln = torch.tensor([np.log(init_diffusion)], dtype=torch.float32)
         self.log_noise = nn.Parameter(ln, requires_grad=True)
 
     @property

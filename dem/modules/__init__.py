@@ -1,5 +1,5 @@
 from .discriminator import KdeDiscriminator, NeuralDiscriminator
-from .model import GenerativeModel, PriorInfo, DynamicModel
+from .model import GenerativeModel, PriorInfo, DynamicModel, Stage
 from .functional import create_model, create_discriminator, create_dynamics
 from .vectorfield import VectorField, StochasticVectorField
 
@@ -13,5 +13,6 @@ classes = [
     "NeuralDiscriminator",
     "VectorField",
     "StochasticVectorField",
+    "Stage",
 ]
 __all__ = functions + classes

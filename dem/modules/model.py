@@ -3,8 +3,21 @@ import torch.nn as nn
 import numpy as np
 from dem.modules.vectorfield import VectorField, StochasticVectorField
 from dem.modules.networks import Reverser
-from dem.utils.utils import tensor_to_numpy
+from dem.utils.utils import tensor_to_numpy, add_noise
 from dem.data.dataset import NumpyDataset
+
+
+class PriorInfo:
+    """The prior information."""
+
+    def __init__(self, init: np.ndarray):
+        super().__init__()
+        self.init_data = NumpyDataset(init)
+
+    def draw(self, N: int, replace: bool = True):
+        N_prior = len(self.init_data)
+        inds = np.random.choice(N_prior, N, replace=replace)
+        return self.init_data[inds]
 
 
 class DynamicModel(nn.Module):
@@ -59,40 +72,121 @@ class DynamicModel(nn.Module):
         y_traj = self.traj(y_init, ts, sde, backward, **kwargs)
         return tensor_to_numpy(y_traj)
 
-    def forward(self, y_init: torch.Tensor, N: int = 60):
-        ts = torch.linspace(0, 1, N).float()
-        y_traj = self.traj(y_init, ts, sde=True, forward=True)
+    def traj_linspace(self, y_init: torch.Tensor, L: int, t_max: float, **kwargs):
+        ts = torch.linspace(0.0, t_max, L).type_as(y_init)
+        return self.traj(y_init=y_init, ts=ts, **kwargs)
+
+    def traj_diag(self, y_init: torch.Tensor, L: int, t_max: float, **kwargs):
+        y_traj = self.traj_linspace(y_init, L, t_max, **kwargs)
         return torch.transpose(y_traj.diagonal(), 0, 1)
 
+    def forward(self, y_init: torch.Tensor, t_max: float, **kwargs):
+        y_traj = self.traj(y_init=y_init, ts=[0.0, t_max], **kwargs)
+        return y_traj[:, 1, :]
 
-class PriorInfo:
-    """The prior information."""
 
-    def __init__(self, init: np.ndarray):
-        super().__init__()
-        self.init_data = NumpyDataset(init)
+class Stage:
+    """Stage of a generative model."""
 
-    def draw(self, N: int, replace: bool = True):
-        N_prior = len(self.init_data)
-        inds = np.random.choice(N_prior, N, replace=replace)
-        return self.init_data[inds]
+    def __init__(
+        self,
+        sde: bool = False,
+        backwards: bool = False,
+        t_max: float = 1.0,
+        uniform: bool = True,
+        sigma: float = 0.0,
+    ):
+        self.sde = sde
+        self.backwards = backwards
+        self.uniform = uniform
+        self.t_max = t_max
+        self.sigma = sigma
+
+    def description(self):
+        str1 = "SDE" if self.sde else "ODE"
+        str2 = "backwards" if self.backwards else "forward"
+        str3 = str(self.t_max)
+        if self.sigma > 0:
+            desc = (
+                "Add Gaussian noise with std" + str(self.sigma) + "to initial "
+                "values of the stage."
+            )
+        else:
+            desc = ""
+        desc += "Integrate " + str1 + " " + str2 + " for time " + str3 + "."
+        if self.uniform:
+            desc += " Return outputs at times [0, ..., " + str3 + "] uniformly."
+        return desc
+
+    def __repr__(self):
+        return "<Stage: " + self.description() + ">"
 
 
 class GenerativeModel(nn.Module):
     """The generative model."""
 
-    def __init__(self, dynamics: DynamicModel, prior_info: PriorInfo):
+    def __init__(
+        self,
+        dynamics: DynamicModel,
+        prior_info: PriorInfo,
+        stages=None,
+        solver_kwargs=None,
+    ):
         super().__init__()
         self.dynamics = dynamics
         self.prior_info = prior_info
+        if stages is None:
+            stages = [Stage()]
+        self.stages = stages
+        if solver_kwargs is None:
+            solver_kwargs = dict()
+        self.solver_kwargs = solver_kwargs
+
+    @property
+    def num_stages(self):
+        return len(self.stages)
+
+    def __repr__(self):
+        desc = "A generative model with the following stages:\n"
+        for s in self.stages:
+            desc += " - " + s.description() + "\n"
+        return desc
 
     def generate_init(self, N: int, like=None):
+        """Perform initial stage of the generative process.
+
+        :param N: number of points to generate from the process
+        :param like: A torch.Tensor that defines the type and device of used tensors.
+        """
         if like is None:
             like = torch.tensor([0.0], dtype=torch.float32)
         init = self.prior_info.draw(N, replace=True)
-        init = torch.from_numpy(init).type_as(like)
-        return init
+        return torch.from_numpy(init).type_as(like)
+
+    def perform_stage(self, x: torch.Tensor, stage: Stage, **kwargs):
+        """Perform one dynamic stage of the generative process.
+
+        :param x: State after previous stage, tensor of shape (N, D).
+        :param stage: Description of the stage.
+        :param kwargs: Keyword arguments to the ODE or SDE solver.
+        :return: A tensor of shape (N, D)
+        """
+        x = add_noise(x, stage.sigma)
+        N = x.shape[0]
+        rev = stage.backwards
+        sde = stage.sde
+        if stage.uniform:
+            x = self.dynamics.traj_diag(
+                x, L=N, sde=sde, backwards=rev, t_max=stage.t_max, **kwargs
+            )
+        else:
+            x = self.dynamics(x, sde=sde, backwards=rev, t_max=stage.t_max, **kwargs)
+        return x
 
     def forward(self, N: int, like=None):
-        init = self.generate_init(N=N, like=like)
-        return init
+        x = self.generate_init(N=N, like=like)
+        x_all = [x]
+        for s in self.stages:
+            x = self.perform_stage(x, s, **self.solver_kwargs)
+            x_all += [x]
+        return x_all

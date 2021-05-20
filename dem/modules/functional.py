@@ -17,6 +17,8 @@ def create_dynamics(D: int, n_hidden: int = 32, stochastic: bool = False):
 
 def create_model(x0: np.ndarray, n_hidden: int = 32, stochastic: bool = False):
     """Construct a model with some default settings."""
+    if x0 is None:
+        x0 = np.array([[0.0, 0.0]])
     D = x0.shape[1]
     dyn = create_dynamics(D, n_hidden=n_hidden, stochastic=stochastic)
     prior_info = PriorInfo(init=x0)

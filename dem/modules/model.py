@@ -84,7 +84,7 @@ class DynamicModel(nn.Module):
 
     def _traj_forward(self, y_init: torch.Tensor, ts, sde: bool, **kwargs):
         if sde:
-            if not self.is_stochastic:
+            if not self.stochastic:
                 raise RuntimeError("vector field is not stochastic!")
             return self.field.sdeint(y_init, ts, **kwargs)
         else:
@@ -94,13 +94,18 @@ class DynamicModel(nn.Module):
         return self.field_reverse.odeint(y_init, ts, **kwargs)
 
     def traj(
-        self, y_init: torch.Tensor, ts, sde=False, backward: bool = False, **kwargs
+        self,
+        y_init: torch.Tensor,
+        ts: torch.Tensor,
+        sde=False,
+        backwards: bool = False,
+        **kwargs
     ):
         """Compute ODE or SDE trajectories
 
         :return: a torch tensor with shape (n_trajectories, n_points, n_dims)
         """
-        if not backward:
+        if not backwards:
             out = self._traj_forward(y_init, ts, sde=sde, **kwargs)
         else:
             if sde:
@@ -131,7 +136,8 @@ class DynamicModel(nn.Module):
         return torch.transpose(y_traj.diagonal(), 0, 1)
 
     def forward(self, y_init: torch.Tensor, t_max: float, **kwargs):
-        y_traj = self.traj(y_init=y_init, ts=[0.0, t_max], **kwargs)
+        ts = torch.tensor([0.0, t_max]).type_as(y_init)
+        y_traj = self.traj(y_init=y_init, ts=ts, **kwargs)
         return y_traj[:, 1, :]
 
 

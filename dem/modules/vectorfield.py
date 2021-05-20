@@ -59,4 +59,4 @@ class StochasticVectorField(VectorField):
         return tensor_to_numpy(g[:, 0])
 
     def sdeint(self, y_init, ts, **kwargs):
-        return torchsde.sdeint(self.field, y_init, ts, **kwargs)
+        return torchsde.sdeint(self, y_init, ts, **kwargs)

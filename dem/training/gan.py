@@ -2,12 +2,10 @@ import os
 
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.optim.adam import Adam
 
 from dem.modules import GenerativeModel, KdeDiscriminator, NeuralDiscriminator
 from dem.modules.discriminator import Discriminator
-from dem.data.dataloader import create_dataloader
 from dem.data.dataset import NumpyDataset
 from .setup import TrainingSetup, run_training
 from .learner import Learner
@@ -17,7 +15,6 @@ def train_model(
     model: GenerativeModel,
     disc: Discriminator,
     data: np.ndarray,
-    gen: np.ndarray,
     **training_setup_kwargs
 ):
     """Train a model.
@@ -25,22 +22,13 @@ def train_model(
     :param model: model to be trained
     :param disc: discriminator
     :param data: a numpy array with shape (num_obs, num_dims)
-    :param gen: a numpy array with shape (num_gen, num_dims)
     :param training_setup_kwargs: keyword arguments to `TrainingSetup`
     """
     ds = NumpyDataset(data)
     setup = TrainingSetup(ds, **training_setup_kwargs)
-    ds_gen = NumpyDataset(gen)
-    genloader = create_dataloader(
-        ds_gen,
-        batch_size=setup.batch_size,
-        num_workers=setup.num_workers,
-        pin_memory=setup.pin_memory,
-        genloader=True,
-    )
     if disc is None:
         disc = NeuralDiscriminator(D=model.D)
-    occ = GAN(model, disc, setup, genloader)
+    occ = GAN(model, disc, setup)
     trainer = run_training(occ, setup.n_epochs, setup.outdir)
     return occ, trainer
 
@@ -49,22 +37,22 @@ class GAN(Learner):
     def __init__(
         self,
         model: GenerativeModel,
-        disc: Discriminator,
+        discriminator: Discriminator,
         setup: TrainingSetup,
-        genloader: NumpyDataset,
     ):
         super().__init__(setup)
         self.model = model
-        self.disc = disc
+        self.discriminator = discriminator
         self.lr = setup.lr
         self.lr_disc = setup.lr_disc
         self.n_epochs = setup.n_epochs
-        self.genloader = genloader
         self.betas = (setup.b1, setup.b2)
 
     def configure_optimizers(self):
-        opt_g = Adam(self.model.parameters(), lr=self.lr, betas=self.betas)
-        opt_d = Adam(self.disc.parameters(), lr=self.lr_disc, betas=self.betas)
+        pars_g = self.model.parameters()
+        pars_d = self.discriminator.parameters()
+        opt_g = Adam(pars_g, lr=self.lr, betas=self.betas)
+        opt_d = Adam(pars_d, lr=self.lr_disc, betas=self.betas)
         return [opt_g, opt_d], []
 
     # KDE Stuff
@@ -96,20 +84,18 @@ class GAN(Learner):
         loss = 0.5 * (loss_real + loss_fake)
         return loss
 
-    def generate(self, data_batch, batch_idx):
-        self.prior_data
-
     def training_step(self, data_batch, batch_idx, optim_idx):
-
+        N = data_batch.shape[0]
+        gen_batch = self.model(N=N, like=data_batch)
         if optim_idx == 0:
-            self.generator_step(data_batch, gen_init_batch)
+            loss = self.generator_step(data_batch, gen_batch)
         if optim_idx == 1:
-            self.discriminator_step(data_batch, gen_init_batch)
+            loss = self.discriminator_step(data_batch, gen_batch)
         z_data = data_batch
         N = z_data.size(0)
         z_fake = self.model(N)  # generate fake data
         lt1, lt2 = self.kde_terms(z_data, z_fake)
-        return 0.5 * (lt1 + lt2)
+        return loss
 
     def validation_step(self, data_batch, batch_idx):
         z_data = data_batch
@@ -181,11 +167,6 @@ class GAN(Learner):
             plot_sde_3d(self.model, z_data, z_traj, idx_epoch, save_dir=fig_dir)
         else:
             plot_sde_nd(self.model, z_data, z_traj, idx_epoch, save_dir=fig_dir)
-
-    def configure_optimizers(self):
-        opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr_init)
-        # opt_d = torch.optim.Adam(self.disc.parameters(), lr=self.lr_init)
-        return opt_g
 
     def train_dataloader(self):
         return self.train_loader

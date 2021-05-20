@@ -40,6 +40,10 @@ class NeuralDiscriminator(Discriminator):
     def forward(self, x: torch.Tensor):
         return torch.sigmoid(self.net(x))
 
+    def __repr__(self):
+        str0 = type(self.net).__name__
+        return "NeuralDiscriminator(net=" + str0 + ")"
+
 
 class KdeDiscriminator(Discriminator):
     """Binary classifier using kernel density estimation.
@@ -55,6 +59,10 @@ class KdeDiscriminator(Discriminator):
         self.kde = ParamKDE(bw_init) if trainable else KDE(bw_init)
         self.x0 = None
         self.x1 = None
+
+    def __repr__(self):
+        str0 = str(self.trainable)
+        return "KDEDiscriminator(trainable=" + str0 + ")"
 
     def set_data(self, x0=None, x1=None):
         if x0 is not None:

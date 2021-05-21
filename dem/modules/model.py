@@ -208,4 +208,4 @@ class GenerativeModel(nn.Module):
         for s in self.stages:
             x = self.perform_stage(x, s, **self.solver_kwargs)
             x_all += [x]
-        return x_all
+        return x_all, x_all[-1]

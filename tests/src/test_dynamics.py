@@ -23,11 +23,14 @@ def test_ode_traj():
     y_traj = dyn.traj_numpy(z, ts)
     y_back = dyn.traj_numpy(z, ts, backward=True)
     dem.visualize(
-        trajectories=y_traj, save_dir="test_out", save_name="traj.png", xlim=[-1.0, 1.5]
+        trajectories=y_traj,
+        save_dir="tests/out",
+        save_name="traj.png",
+        xlim=[-1.0, 1.5],
     )
     dem.visualize(
         trajectories=y_back,
-        save_dir="test_out",
+        save_dir="tests/out",
         save_name="back.png",
         lines_kwargs=dict(linewidth=3),
     )

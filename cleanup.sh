@@ -4,6 +4,6 @@ rm -rf *.egg-info
 rm -rf test-output.xml
 rm -rf .pytest_cache
 rm -rf __pycache__
-rm -rf *.png
-rm -rf test_out/
+rm -rf tests/__pycache__
+rm -rf tests/out
 

@@ -19,4 +19,4 @@ cov_html/
 *.pkl
 *.pt
 test-output.xml
-test_out/
+tests/out/

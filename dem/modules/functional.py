@@ -10,21 +10,29 @@ from dem.modules import (
 )
 
 
-def create_dynamics(D: int, n_hidden: int = 32, stochastic: bool = False):
+def create_dynamics(D: int, n_hidden: int = 32, stochastic: bool = False, net_f=None):
     """Create a vector field that has methods."""
-    net_f = TanhNetTwoLayer(D, D, n_hidden)
+    if net_f is None:
+        net_f = TanhNetTwoLayer(D, D, n_hidden)
     return DynamicModel(net_f, stochastic)
 
 
-def create_model(init: np.ndarray, n_hidden: int = 32, stages=None):
-    """Construct a model with some default settings."""
+def create_model(init: np.ndarray, n_hidden: int = 32, stages=None, net_f=None):
+    """Construct a model with some default settings.
+
+    :param init: Initial points as rows of a numpy array.
+    :param n_hidden: number of hidden nodes in net_f. Has no effect if net_f is not
+    None.
+    :param net_f: A neural network module specifying the drift of the vector field.
+    :param stages: A list of `Stage`s of the generative model.
+    """
     if init is None:
         init = np.array([[0.0, 0.0]])
     if stages is None:
         stages = [Stage()]
     D = init.shape[1]
     is_stochastic = any([s.sde for s in stages])
-    dyn = create_dynamics(D, n_hidden=n_hidden, stochastic=is_stochastic)
+    dyn = create_dynamics(D, n_hidden, is_stochastic, net_f)
     prior_info = PriorInfo(init=init)
     return GenerativeModel(dynamics=dyn, prior_info=prior_info, stages=stages)
 

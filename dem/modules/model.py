@@ -5,6 +5,7 @@ from dem.modules.vectorfield import VectorField, StochasticVectorField
 from dem.modules.networks import Reverser
 from dem.utils.utils import tensor_to_numpy, add_noise
 from dem.data.dataset import NumpyDataset
+from dem.plotting.model import plot_model_state
 
 
 class Stage:
@@ -171,7 +172,7 @@ class GenerativeModel(nn.Module):
             desc += " - " + s.description() + "\n"
         return desc
 
-    def generate_init(self, N: int, like=None):
+    def _generate_init(self, N: int, like=None):
         """Perform initial stage of the generative process.
 
         :param N: number of points to generate from the process
@@ -182,12 +183,14 @@ class GenerativeModel(nn.Module):
         init = self.prior_info.draw(N, replace=True)
         return torch.from_numpy(init).type_as(like)
 
-    def perform_stage(self, x: torch.Tensor, stage: Stage, **kwargs):
+    def _perform_stage(self, x: torch.Tensor, stage: Stage, traj=False, **kwargs):
         """Perform one dynamic stage of the generative process.
 
         :param x: State after previous stage, tensor of shape (N, D).
         :param stage: Description of the stage.
         :param kwargs: Keyword arguments to the ODE or SDE solver.
+        :param traj: should solve also a dense trajectory (should be False during
+        training and used only for visualization)
         :return: A tensor of shape (N, D)
         """
         x = add_noise(x, stage.sigma)
@@ -195,17 +198,40 @@ class GenerativeModel(nn.Module):
         rev = stage.backwards
         sde = stage.sde
         if stage.uniform:
-            x = self.dynamics.traj_diag(
+            x_new = self.dynamics.traj_diag(
                 x, L=N, sde=sde, backwards=rev, t_max=stage.t_max, **kwargs
             )
         else:
-            x = self.dynamics(x, sde=sde, backwards=rev, t_max=stage.t_max, **kwargs)
-        return x
+            x_new = self.dynamics(
+                x, sde=sde, backwards=rev, t_max=stage.t_max, **kwargs
+            )
+        if traj:
+            x_traj = self.dynamics.traj_linspace(x, 30, stage.t_max, **kwargs)
+        else:
+            x_traj = None
+        return x_new, x_traj
 
     def forward(self, N: int, like=None):
-        x = self.generate_init(N=N, like=like)
-        x_all = [x]
+        """Forward pass through the generative model."""
+        x = self._generate_init(N=N, like=like)
         for s in self.stages:
-            x = self.perform_stage(x, s, **self.solver_kwargs)
+            x, _ = self._perform_stage(x, s, False, **self.solver_kwargs)
+        return x
+
+    @torch.no_grad()
+    def forward_numpy(self, N: int):
+        x = self._generate_init(N=N, like=None)
+        x_all = [x]
+        traj_all = []
+        for s in self.stages:
+            x, traj = self._perform_stage(x, s, True, **self.solver_kwargs)
             x_all += [x]
-        return x_all, x_all[-1]
+            traj_all += [traj]
+        x_all = [tensor_to_numpy(x) for x in x_all]
+        traj_all = [tensor_to_numpy(traj) for traj in traj_all]
+        return x_all, traj_all
+
+    @torch.no_grad()
+    def visualize(self, N: int, data=None, save_name=None, save_dir=None, **kwargs):
+        x_all, traj_all = self.forward_numpy(N)
+        plot_model_state(x_all, traj_all, data, save_name, save_dir, **kwargs)

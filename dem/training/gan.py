@@ -80,7 +80,7 @@ class GAN(Learner):
     def training_step(self, data_batch, batch_idx, optimizer_idx):
         """Perform a training step."""
         N = data_batch.shape[0]
-        _, gen_batch = self.model(N=N, like=data_batch)
+        gen_batch = self.model(N=N, like=data_batch)
         if optimizer_idx == 0:
             loss = self.loss_generator(gen_batch)
         elif optimizer_idx == 1:
@@ -92,7 +92,7 @@ class GAN(Learner):
     def on_epoch_end(self):
         validation_data = next(iter(self.valid_loader))
         N = validation_data.shape[0]
-        _, gen = self.model(N=N, like=validation_data)
+        gen = self.model(N=N, like=validation_data)
         g_loss = self.loss_generator(gen)
         d_loss = self.loss_discriminator(gen, validation_data)
         print("\nN_valid=", N)

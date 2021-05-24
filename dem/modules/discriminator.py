@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from dem.modules.networks import LeakyReluNetTwoLayer
+from dem.modules.networks import MultiLayerNet
 from dem.modules.kde import KDE, ParamKDE
 
 
@@ -27,22 +27,26 @@ class Discriminator(nn.Module, abc.ABC):
 
 
 class NeuralDiscriminator(Discriminator):
-    """Binary classifier using a neural network.
+    """Binary classifier using a neural network."""
 
-    :param D: dimension
-    :param n_hidden: number of hidden nodes
-    """
-
-    def __init__(self, D: int, n_hidden: int = 64):
+    def __init__(self, D: int, n_hidden: int = 48, n_hidden_layers=2, activation=None):
         super().__init__(D)
-        self.net = LeakyReluNetTwoLayer(D, 1, n_hidden)
+        if activation is None:
+            activation = nn.LeakyReLU(0.2, inplace=True)
+        self.net = MultiLayerNet(
+            n_input=D,
+            n_hidden=n_hidden,
+            n_hidden_layers=n_hidden_layers,
+            n_output=1,
+            activation=activation,
+        )
 
     def forward(self, x: torch.Tensor):
         return torch.sigmoid(self.net(x))
 
     def __repr__(self):
-        str0 = type(self.net).__name__
-        return "NeuralDiscriminator(net=" + str0 + ")"
+        str0 = self.net.__repr__()
+        return "NeuralDiscriminator with " + str0
 
 
 class KdeDiscriminator(Discriminator):

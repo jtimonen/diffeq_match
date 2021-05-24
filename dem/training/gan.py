@@ -95,7 +95,6 @@ class GAN(Learner):
         gen = self.model(N=N, like=validation_data)
         g_loss = self.loss_generator(gen)
         d_loss = self.loss_discriminator(gen, validation_data)
-        print("\nN_valid=", N)
         self.log("g_loss", g_loss.item())
         self.log("d_loss", d_loss.item())
         idx_epoch = self.current_epoch
@@ -109,7 +108,3 @@ class GAN(Learner):
     def visualize(self, gen, data, g_loss, d_loss, idx_epoch):
         gen = tensor_to_numpy(gen)
         data = tensor_to_numpy(data)
-        print("\n")
-        print(gen.shape)
-        print(data.shape)
-        print("\n")

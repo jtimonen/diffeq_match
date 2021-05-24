@@ -4,96 +4,58 @@ import torch.nn as nn
 import torch.nn.functional as func
 
 
-class TanhNetOneLayer(nn.Module):
+def create_sequential(
+    n_input: int, n_output: int, n_hidden: int, n_hidden_layers: int, activation
+):
+    if n_hidden_layers == 1:
+        out = nn.Sequential(
+            nn.Linear(n_input, n_hidden), activation, nn.Linear(n_hidden, n_output)
+        )
+    elif n_hidden_layers == 2:
+        out = nn.Sequential(
+            nn.Linear(n_input, n_hidden),
+            activation,
+            nn.Linear(n_hidden, n_hidden),
+            activation,
+            nn.Linear(n_hidden, n_output),
+        )
+    else:
+        raise ValueError("n_hidden_layers should be 1 or 2!")
+    return out
+
+
+class MultiLayerNet(nn.Module):
     """A fully connected network with one hidden layer. Uses the hyperbolic
     tangent activation function.
     """
 
-    def __init__(self, n_input: int, n_output: int, n_hidden: int = 128):
+    def __init__(
+        self,
+        n_input: int,
+        n_output: int,
+        n_hidden: int = 128,
+        n_hidden_layers: int = 1,
+        activation=nn.Tanh,
+    ):
         super().__init__()
         self.n_input = n_input
         self.n_output = n_output
         self.n_hidden = n_hidden
-        self.log_R = torch.nn.Parameter(torch.tensor(-0.5).float(), requires_grad=True)
-        self.layers = nn.Sequential(
-            nn.Linear(n_input, n_hidden), nn.Tanh(), nn.Linear(n_hidden, n_output)
+        self.n_hidden_layers = n_hidden_layers
+        self.act_name = str(activation)
+        self.layers = create_sequential(
+            n_input, n_output, n_hidden, n_hidden_layers, activation
         )
 
-    def forward(self, z: torch.Tensor):
-        """Pass the tensor z through the network."""
-        y = self.layers(z)
-        R = torch.exp(self.log_R)
-        return R * func.normalize(y, dim=1)
+    def forward(self, x: torch.Tensor):
+        """Pass the tensor x through the network."""
+        return self.layers(x)
 
-
-class ReluNetOne(nn.Module):
-    """Network with one output node."""
-
-    def __init__(self, n_input: int, n_hidden: int = 128):
-        super().__init__()
-        self.n_input = n_input
-        self.n_hidden = n_hidden
-        self.layers = nn.Sequential(
-            nn.Linear(n_input, n_hidden), nn.ReLU(), nn.Linear(n_hidden, 1)
-        )
-
-    def forward(self, z: torch.Tensor):
-        """Pass the tensor z through the network."""
-        y = 0.3 * torch.sigmoid(self.layers(z))
-        return y
-
-
-class TanhNetTwoLayer(nn.Module):
-    """A fully connected network with two hidden layers. Uses the hyperbolic
-    tangent activation function.
-    """
-
-    def __init__(self, n_input: int, n_output: int, n_hidden: int = 32):
-        super().__init__()
-        self.n_input = n_input
-        self.n_output = n_output
-        self.n_hidden = n_hidden
-        # self.log_R = torch.nn.Parameter(torch.tensor(-0.5).float(), requires_grad=True)
-        self.layers = nn.Sequential(
-            nn.Linear(n_input, n_hidden),
-            nn.Tanh(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.Tanh(),
-            nn.Linear(n_hidden, n_output),
-        )
-
-    def forward(self, z: torch.Tensor):
-        """Pass the tensor z through the network."""
-        y = self.layers(z)
-        # R = torch.exp(self.log_R)
-        # theta = y[:, 0]
-        # z1 = R * torch.cos(theta)
-        # z2 = R * torch.sin(theta)
-        # z = torch.vstack((z1, z2)).T
-        return y  # R * func.normalize(y, dim=1)
-
-
-class LeakyReluNetTwoLayer(nn.Module):
-    """A fully connected network with two hidden layers. Uses the ReLU
-    activation function.
-    """
-
-    def __init__(self, n_input: int, n_output: int, n_hidden: int = 64):
-        super().__init__()
-        self.n_input = n_input
-        self.n_input = n_output
-        self.n_hidden = n_hidden
-        self.layers = nn.Sequential(
-            nn.Linear(n_input, n_hidden),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(n_hidden, n_hidden),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(n_hidden, n_output),
-        )
-
-    def forward(self, z: torch.Tensor):
-        """Pass the tensor z through the network."""
-        return self.layers(z)
+    def __repr__(self):
+        n1, n2 = self.n_hidden, self.n_hidden_layers
+        desc = "<MultiLayerNet(n_hidden=%d, n_hidden_layers=%d" % (n1, n2)
+        desc += ", activation=" + self.act_name + ")>"
+        return desc
 
 
 class Reverser(nn.Module):

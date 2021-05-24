@@ -67,6 +67,8 @@ class DynamicModel(nn.Module):
 
     def __init__(self, net_f: nn.Module, stochastic: bool = False):
         super().__init__()
+        assert hasattr(net_f, "n_input"), "net_f must have attribute n_input!"
+        self.D = net_f.n_input
         self.stochastic = stochastic
         if stochastic:
             self.field = StochasticVectorField(net_f)
@@ -76,7 +78,7 @@ class DynamicModel(nn.Module):
 
     def description(self):
         str0 = str(self.stochastic)
-        str1 = str(type(self.field.net_f).__name__)
+        str1 = self.field.net_f.__repr__()
         desc = "DynamicModel(stochastic=" + str0 + ", net_f=" + str1 + ")"
         return desc
 
@@ -153,6 +155,7 @@ class GenerativeModel(nn.Module):
         solver_kwargs=None,
     ):
         super().__init__()
+        self.D = dynamics.D
         self.dynamics = dynamics
         self.prior_info = prior_info
         if stages is None:

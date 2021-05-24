@@ -16,7 +16,7 @@ def test_gan_creation():
     gan, trainer = dem.train_model(
         model=generator, disc=disc, data=z, n_epochs=0, outdir="tests/out/gan1"
     )
-    x, traj = gan.model.forward_numpy(N=64)
+    x, traj, _ = gan.model.forward_numpy(N=64)
     a = x[-1]
     assert a.shape == (64, 2)
     assert a.dtype == np.float32

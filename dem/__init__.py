@@ -5,7 +5,7 @@ from dem.data import *
 from dem.training import *
 
 # Version defined here
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 
 # Exports
 functions = [

@@ -5,7 +5,7 @@ from dem.modules.vectorfield import VectorField, StochasticVectorField
 from dem.modules.networks import Reverser
 from dem.utils.utils import tensor_to_numpy, add_noise
 from dem.data.dataset import NumpyDataset
-from dem.plotting.model import plot_model_state
+from dem.plotting.model import plot_simulation
 
 
 class Stage:
@@ -183,14 +183,14 @@ class GenerativeModel(nn.Module):
         init = self.prior_info.draw(N, replace=True)
         return torch.from_numpy(init).type_as(like)
 
-    def _perform_stage(self, x: torch.Tensor, stage: Stage, traj=False, **kwargs):
+    def _perform_stage(self, x: torch.Tensor, stage: Stage, L: int = 0, **kwargs):
         """Perform one dynamic stage of the generative process.
 
         :param x: State after previous stage, tensor of shape (N, D).
         :param stage: Description of the stage.
         :param kwargs: Keyword arguments to the ODE or SDE solver.
-        :param traj: should solve also a dense trajectory (should be False during
-        training and used only for visualization)
+        :param L: Should solve also a dense ODE/SDE trajectory (for visualization)?
+        L is trajectory length.
         :return: A tensor of shape (N, D)
         """
         x = add_noise(x, stage.sigma)
@@ -205,33 +205,82 @@ class GenerativeModel(nn.Module):
             x_new = self.dynamics(
                 x, sde=sde, backwards=rev, t_max=stage.t_max, **kwargs
             )
-        if traj:
-            x_traj = self.dynamics.traj_linspace(x, 30, stage.t_max, **kwargs)
-        else:
-            x_traj = None
-        return x_new, x_traj
+        do_traj = L > 0
+        ode_traj, sde_traj = None, None
+        if do_traj:
+            ode_traj = self.dynamics.traj_linspace(
+                x, L, t_max=stage.t_max, sde=False, backwards=rev, **kwargs
+            )
+        if do_traj and sde:
+            sde_traj = self.dynamics.traj_linspace(
+                x, L, t_max=stage.t_max, sde=True, backwards=rev, **kwargs
+            )
+        return x_new, ode_traj, sde_traj
 
     def forward(self, N: int, like=None):
         """Forward pass through the generative model."""
         x = self._generate_init(N=N, like=like)
         for s in self.stages:
-            x, _ = self._perform_stage(x, s, False, **self.solver_kwargs)
+            x, _, _ = self._perform_stage(x, s, **self.solver_kwargs)
         return x
 
     @torch.no_grad()
-    def forward_numpy(self, N: int):
+    def forward_numpy(self, N: int, L: int = 60):
         x = self._generate_init(N=N, like=None)
         x_all = [x]
-        traj_all = []
+        odetrajs = []
+        sdetrajs = []
         for s in self.stages:
-            x, traj = self._perform_stage(x, s, True, **self.solver_kwargs)
+            x, ode_traj, sde_traj = self._perform_stage(x, s, L, **self.solver_kwargs)
             x_all += [x]
-            traj_all += [traj]
+            odetrajs += [tensor_to_numpy(ode_traj) if (ode_traj is not None) else None]
+            sdetrajs += [tensor_to_numpy(sde_traj) if (sde_traj is not None) else None]
         x_all = [tensor_to_numpy(x) for x in x_all]
-        traj_all = [tensor_to_numpy(traj) for traj in traj_all]
-        return x_all, traj_all
+        return x_all, odetrajs, sdetrajs
 
     @torch.no_grad()
-    def visualize(self, N: int, data=None, save_name=None, save_dir=None, **kwargs):
-        x_all, traj_all = self.forward_numpy(N)
-        plot_model_state(x_all, traj_all, data, save_name, save_dir, **kwargs)
+    def visualize(
+        self,
+        N: int,
+        data=None,
+        save_name=None,
+        save_dir=None,
+        point_alpha=0.7,
+        ode_alpha=0.2,
+        sde_alpha=0.2,
+        L: int = 60,
+        **kwargs
+    ):
+        x_all, ot, st = self.forward_numpy(N, L)
+        result = Simulation(self.stages, x_all, ot, st)
+        plot_simulation(
+            result,
+            data,
+            save_name,
+            save_dir,
+            point_alpha,
+            ode_alpha,
+            sde_alpha,
+            **kwargs
+        )
+
+
+class Simulation:
+    """Simulation result of a generative model."""
+
+    def __init__(self, stages: list, x_all: list, traj_ode: list, traj_sde: list):
+        x_init = x_all[0]
+        x_stages = x_all[1:]
+        self.num_stages = len(stages)
+        self.stages = stages
+        self.D = x_init.shape[1]
+        self.x_init = x_init
+        self.x_stages = self.assert_len(x_stages)
+        self.traj_ode = self.assert_len(traj_ode)
+        self.traj_sde = self.assert_len(traj_sde)
+
+    def assert_len(self, x):
+        assert (
+            len(x) == self.num_stages
+        ), "length of x should be equal to number of stages!"
+        return x

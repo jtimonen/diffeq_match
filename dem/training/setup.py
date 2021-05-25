@@ -1,11 +1,21 @@
 from pytorch_lightning import Trainer, LightningModule
 from torch.utils.data.dataset import random_split
+import warnings
 
 
 def run_training(module: LightningModule, n_epochs: int, outdir):
     trainer = Trainer(max_epochs=n_epochs, min_epochs=n_epochs, default_root_dir=outdir)
-    if n_epochs > 0:
-        trainer.fit(module)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            action="ignore", category=UserWarning, message="The dataloader,"
+        )
+        warnings.filterwarnings(
+            action="ignore",
+            category=UserWarning,
+            message="you passed in a val_dataloader but have no validation_step",
+        )
+        if n_epochs > 0:
+            trainer.fit(module)
     return trainer
 
 

@@ -170,9 +170,13 @@ class GenerativeModel(nn.Module):
         return len(self.stages)
 
     def __repr__(self):
-        desc = "GenerativeModel with " + self.dynamics.description() + ". Stages:\n"
+        desc = "* GenerativeModel:"
+        desc += "\n - Dynamics: " + self.dynamics.description()
+        desc += "\n - Stages:"
+        idx = 0
         for s in self.stages:
-            desc += " - " + s.description() + "\n"
+            idx += 1
+            desc += "\n   (" + str(idx) + ") " + s.description()
         return desc
 
     def _generate_init(self, N: int, like=None):

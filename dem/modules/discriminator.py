@@ -46,7 +46,7 @@ class NeuralDiscriminator(Discriminator):
 
     def __repr__(self):
         str0 = self.net.__repr__()
-        return "NeuralDiscriminator with " + str0
+        return "* NeuralDiscriminator with " + str0
 
 
 class KdeDiscriminator(Discriminator):
@@ -66,7 +66,7 @@ class KdeDiscriminator(Discriminator):
 
     def __repr__(self):
         str0 = str(self.trainable)
-        return "KDEDiscriminator(trainable=" + str0 + ")"
+        return "* KDEDiscriminator(trainable=" + str0 + ")"
 
     def set_data(self, x0=None, x1=None):
         if x0 is not None:

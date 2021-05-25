@@ -35,7 +35,7 @@ class TrainingSetup:
         lr_disc=None,
         p_valid=None,
         pin_memory=False,
-        b1: float = 0.005,
+        b1: float = 0.5,
         b2: float = 0.999,
     ):
         if lr_disc is None:
@@ -53,5 +53,5 @@ class TrainingSetup:
         self.b2 = b2
 
     def __repr__(self):
-        desc = "<TrainingSetup (lr=%1.4f, n_epochs=%d)>" % (self.lr, self.n_epochs)
+        desc = "* TrainingSetup: lr=%1.4f, n_epochs=%d" % (self.lr, self.n_epochs)
         return desc

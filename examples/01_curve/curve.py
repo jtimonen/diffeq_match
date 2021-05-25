@@ -6,7 +6,7 @@ import torch
 N = 1000
 z_data, t_data = dem.sim(1, N, sigma=0.1)
 # dem.plot_sim(z_data, t_data)
-z_init = z_data[:, 0:50]
+z_init = z_data[0:30, :]
 
 # Create model and discriminator
 model = dem.create_model(init=z_init)
@@ -14,5 +14,5 @@ disc = dem.create_discriminator(D=model.D)
 
 # Training
 dem.train_model(
-    model, disc, z_data, plot_freq=10, n_epochs=500, lr=0.005, batch_size=64
+    model, disc, z_data, plot_freq=3, n_epochs=300, lr=0.005, batch_size=128
 )

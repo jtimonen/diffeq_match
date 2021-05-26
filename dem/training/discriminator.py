@@ -66,21 +66,9 @@ class UnaryClassification(Learner):
         return x, y_target, y_pred, loss
 
     def update_kde(self):
-        if self.discriminator.is_kde:
-            data = self.whole_trainset()
-            x_real, x_noisy = self.create_x(data)
-            self.discriminator.update(x0=x_noisy, x1=x_real)
-
-    def on_fit_start(self) -> None:
-        print("Training started.")
-        self.update_kde()
-
-    def on_epoch_start(self) -> None:
-        self.update_kde()
-
-    def on_fit_end(self) -> None:
-        print("Training done.")
-        self.update_kde()
+        data = self.whole_trainset()
+        x_real, x_noisy = self.create_x(data)
+        self.discriminator.update(x0=x_noisy, x1=x_real)
 
     def training_step(self, data_batch, batch_idx):
         _, _, _, loss = self.forward(data_batch)
@@ -101,7 +89,7 @@ class UnaryClassification(Learner):
     def log_metrics(self, loss: float, acc: float):
         self.log("valid_loss", loss)
         self.log("valid_accuracy", acc)
-        if self.discriminator.is_kde:
+        if self.involves_kde:
             self.log("bandwidth", self.discriminator.kde.bw)
 
     def configure_optimizers(self):
@@ -110,7 +98,7 @@ class UnaryClassification(Learner):
     def visualize(self, x, y_target):
         fn = self.create_figure_name()
         title = self.epoch_str()
-        if self.discriminator.is_kde:
+        if self.involves_kde:
             title = title + (", bw = %1.4f" % self.discriminator.kde.bw)
         fig_dir = os.path.join(self.outdir, "figs")
         if self.discriminator.D == 2:

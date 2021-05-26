@@ -47,6 +47,24 @@ class Learner(pl.LightningModule, abc.ABC):
         batches = [batch for batch in self.valid_loader]
         return torch.cat(batches, dim=0)
 
+    @property
+    def involves_kde(self):
+        return self.discriminator.is_kde
+
+    def on_fit_start(self) -> None:
+        print("Training started.")
+        if self.involves_kde:
+            self.update_kde()
+
+    def on_epoch_start(self) -> None:
+        if self.involves_kde:
+            self.update_kde()
+
+    def on_fit_end(self) -> None:
+        print("Training done.")
+        if self.involves_kde:
+            self.update_kde()
+
     def set_outdir(self, path):
         """Set output directory."""
         if not os.path.isdir(path):

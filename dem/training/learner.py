@@ -1,6 +1,8 @@
 import os
 import abc
 import pytorch_lightning as pl
+import torch
+
 from dem.data.dataloader import create_dataloader
 from .setup import TrainingSetup
 from dem.utils import read_logged_scalar, read_logged_events
@@ -36,6 +38,14 @@ class Learner(pl.LightningModule, abc.ABC):
     @property
     def num_valid(self):
         return len(self.valid_loader.dataset)
+
+    def whole_trainset(self):
+        batches = [batch for batch in self.train_loader]
+        return torch.cat(batches, dim=0)
+
+    def whole_validset(self):
+        batches = [batch for batch in self.valid_loader]
+        return torch.cat(batches, dim=0)
 
     def set_outdir(self, path):
         """Set output directory."""

@@ -14,21 +14,21 @@ from dem.plotting import plot_disc_2d
 
 
 def train_occ(
-    model: Discriminator,
+    discriminator: Discriminator,
     x: np.ndarray,
     noise_scale: float = 1.0,
     **training_setup_kwargs
 ):
     """Train a binary classifier using data from only one class.
 
-    :param model: The discriminator to train.
+    :param discriminator: The discriminator to train.
     :param x: Numpy array of shape (N, D), containing N observations belonging
     to class 1.
     :param noise_scale: Standard deviation of noise added to x to generate fake data.
     """
     ds = NumpyDataset(x)
     setup = TrainingSetup(ds, **training_setup_kwargs)
-    occ = UnaryClassification(model, setup, noise_scale)
+    occ = UnaryClassification(discriminator, setup, noise_scale)
     trainer = run_training(occ, setup.n_epochs, setup.outdir)
     return occ, trainer
 
@@ -36,21 +36,17 @@ def train_occ(
 class UnaryClassification(Learner):
     def __init__(
         self,
-        model: Discriminator,
+        discriminator: Discriminator,
         setup: TrainingSetup,
         noise_scale: float,
     ):
         super().__init__(setup)  # set dataloaders etc
-        self.model = model
+        self.discriminator = discriminator
         self.lr = setup.lr
         self.n_epochs = setup.n_epochs
         self.noise_scale = noise_scale
         self.plot_contour = True
         self.plot_points = True
-
-    @property
-    def is_kde(self):
-        return isinstance(self.model, KdeDiscriminator)
 
     def generate_noisy_data(self, x: torch.Tensor):
         scale = self.noise_scale * torch.ones_like(x)
@@ -64,12 +60,27 @@ class UnaryClassification(Learner):
 
     def forward(self, data_batch):
         x_real, x_noisy = self.create_x(data_batch)
-        if self.is_kde:
-            self.model.set_data(x0=x_noisy, x1=x_real)
         x, y_target = create_classification(x_real, x_noisy)
-        y_pred = self.model(x)  # classify
+        y_pred = self.discriminator(x)  # classify
         loss = binary_cross_entropy(y_pred, y_target, reduction="mean")
         return x, y_target, y_pred, loss
+
+    def update_kde(self):
+        if self.discriminator.is_kde:
+            data = self.whole_trainset()
+            x_real, x_noisy = self.create_x(data)
+            self.discriminator.update(x0=x_noisy, x1=x_real)
+
+    def on_fit_start(self) -> None:
+        print("Training started.")
+        self.update_kde()
+
+    def on_epoch_start(self) -> None:
+        self.update_kde()
+
+    def on_fit_end(self) -> None:
+        print("Training done.")
+        self.update_kde()
 
     def training_step(self, data_batch, batch_idx):
         _, _, _, loss = self.forward(data_batch)
@@ -90,21 +101,21 @@ class UnaryClassification(Learner):
     def log_metrics(self, loss: float, acc: float):
         self.log("valid_loss", loss)
         self.log("valid_accuracy", acc)
-        if self.is_kde:
-            self.log("bandwidth", self.model.kde.bw)
+        if self.discriminator.is_kde:
+            self.log("bandwidth", self.discriminator.kde.bw)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        return torch.optim.Adam(self.discriminator.parameters(), lr=self.lr)
 
     def visualize(self, x, y_target):
         fn = self.create_figure_name()
         title = self.epoch_str()
-        if self.is_kde:
-            title = title + (", bw = %1.4f" % self.model.kde.bw)
+        if self.discriminator.is_kde:
+            title = title + (", bw = %1.4f" % self.discriminator.kde.bw)
         fig_dir = os.path.join(self.outdir, "figs")
-        if self.model.D == 2:
+        if self.discriminator.D == 2:
             plot_disc_2d(
-                self.model,
+                self.discriminator,
                 x,
                 y_target,
                 save_name=fn,

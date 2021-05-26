@@ -25,6 +25,10 @@ class Discriminator(nn.Module, abc.ABC):
         labels = (val > 0.5).astype(float)
         return labels.ravel(), val.ravel()
 
+    @property
+    def is_kde(self):
+        return isinstance(self, KdeDiscriminator)
+
 
 class NeuralDiscriminator(Discriminator):
     """Binary classifier using a neural network."""
@@ -68,18 +72,22 @@ class KdeDiscriminator(Discriminator):
         str0 = str(self.trainable)
         return "* KDEDiscriminator(trainable=" + str0 + ")"
 
-    def set_data(self, x0=None, x1=None):
-        if x0 is not None:
-            self.x0 = x0
-        if x1 is not None:
-            self.x1 = x1
+    def update(self, x0: torch.Tensor, x1: torch.Tensor):
+        self.x0 = x0
+        self.x1 = x1
 
-    def set_data_numpy(self, x0: np.ndarray, x1: np.ndarray):
+    @torch.no_grad()
+    def update_numpy(self, x0: np.ndarray, x1: np.ndarray):
         x0 = torch.from_numpy(x0).float()
         x1 = torch.from_numpy(x1).float()
-        self.set_data(x0, x1)
+        self.update(x0, x1)
+
+    def is_defined(self):
+        return (self.x0 is not None) and (self.x0 is not None)
 
     def forward(self, x: torch.Tensor):
-        score_class0 = self.kde(x, self.x0)
-        score_class1 = self.kde(x, self.x1)
+        if not self.is_defined():
+            raise RuntimeError("KDE x0 and x1 not set!")
+        score_class0 = self.kde(x, self.x0) + 1e-12
+        score_class1 = self.kde(x, self.x1) + 1e-12
         return score_class1 / (score_class0 + score_class1)

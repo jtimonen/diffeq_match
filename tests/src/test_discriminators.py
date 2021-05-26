@@ -15,7 +15,7 @@ def test_kde_discriminator():
     x, labels = make_moons(100, noise=0.2)
     x0, x1 = dem.split_by_labels(x, labels)
     disc = dem.KdeDiscriminator(D=2, bw_init=bw, trainable=False)
-    disc.set_data_numpy(x0, x1)
+    disc.update_numpy(x0, x1)
     y_pred, y_prob = disc.classify(x)
     acc = dem.accuracy(y_pred=y_pred, y_true=labels)
     assert acc >= 0.0, "accuracy should be non-negative"

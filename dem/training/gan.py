@@ -32,15 +32,11 @@ def train_model(
     setup = TrainingSetup(ds, **training_setup_kwargs)
     if disc is None:
         disc = NeuralDiscriminator(D=model.D)
-    occ = GAN(model, disc, setup)
+    gan = GAN(model, disc, setup)
     if verbose:
-        print("")
-        print(model)
-        print(disc)
-        print(setup)
-        print("")
-    trainer = run_training(occ, setup.n_epochs, setup.outdir)
-    return occ, trainer
+        print("\n", gan, "\n")
+    trainer = run_training(gan, setup.n_epochs, setup.outdir)
+    return gan, trainer
 
 
 class GAN(Learner):
@@ -58,6 +54,12 @@ class GAN(Learner):
         self.n_epochs = setup.n_epochs
         self.betas = (setup.b1, setup.b2)
         self.setup_desc = setup.__repr__()
+
+    def __repr__(self):
+        desc = self.model.__repr__()
+        desc += "\n" + self.discriminator.__repr__()
+        desc += "\n" + self.setup_desc
+        return desc
 
     def configure_optimizers(self):
         pars_g = self.model.parameters()

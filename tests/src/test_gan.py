@@ -9,10 +9,10 @@ N_gen = 13
 z = np.random.normal(size=(100, D))
 z0 = 1 + 0.3 * np.random.normal(size=(N_gen, D))
 generator = dem.create_model(init=z0)
-disc = dem.create_discriminator(D=D)
 
 
 def test_gan_creation():
+    disc = dem.create_discriminator(D=D)
     gan, trainer = dem.train_model(
         model=generator, disc=disc, data=z, n_epochs=0, outdir="tests/out/gan1"
     )
@@ -25,9 +25,30 @@ def test_gan_creation():
     os.rmdir("tests/out/gan1")
 
 
-def test_gan_training():
+def test_gan_nn_training():
+    disc = dem.create_discriminator(D=D)
     gan, trainer = dem.train_model(
-        model=generator, disc=disc, data=z, n_epochs=4, outdir="tests/out/gan2"
+        model=generator,
+        disc=disc,
+        data=z,
+        n_epochs=4,
+        outdir="tests/out/gan2",
+        plot_freq=2,
+    )
+    a = gan.model(N=64)
+    assert a.shape == (64, 2)
+    assert a.dtype == torch.float32
+
+
+def test_gan_kde_training():
+    disc = dem.create_discriminator(D=D, kde=True, fixed_kde=False)
+    gan, trainer = dem.train_model(
+        model=generator,
+        disc=disc,
+        data=z,
+        n_epochs=4,
+        outdir="tests/out/gan3",
+        plot_freq=2,
     )
     a = gan.model(N=64)
     assert a.shape == (64, 2)

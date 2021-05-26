@@ -96,6 +96,12 @@ class GAN(Learner):
         n_correct = sum(d_data > 0.5) + sum(d_gen <= 0.5)
         return n_correct / (len(d_data) + len(d_gen))
 
+    @torch.no_grad()
+    def update_kde(self):
+        data = self.whole_trainset()
+        gen = self.model(N=data.shape[0], like=data)
+        self.discriminator.update(x0=gen, x1=data)
+
     def training_step(self, data_batch, batch_idx, optimizer_idx):
         """Perform a training step."""
         N = data_batch.shape[0]
@@ -110,20 +116,27 @@ class GAN(Learner):
         return loss
 
     def on_epoch_end(self):
-        validation_data = next(iter(self.valid_loader))
-        N = validation_data.shape[0]
-        gen = self.model(N=N, like=validation_data)
-        g_loss = self.loss_generator(gen)
-        d_loss = self.loss_discriminator(validation_data, gen)
-        acc = self.accuracy(validation_data, gen)
+        g_loss, d_loss, acc = self.validate_model()
         self.log("g_loss", g_loss.item())
         self.log("d_loss", d_loss.item())
         self.log("accuracy", acc)
-        pf = self.plot_freq
-        if pf > 0:
-            if self.current_epoch % pf == 0:
-                self.visualize(validation_data, gen, g_loss, d_loss, acc)
-        return g_loss
+
+    def on_fit_end(self) -> None:
+        print("Training done.")
+        if self.involves_kde:
+            self.update_kde()
+        force_plot = self.plot_freq > 0
+        self.validate_model(force_plot=force_plot)
+
+    def validate_model(self, force_plot=False):
+        data = self.whole_validset()
+        gen = self.model(N=data.shape[0], like=data)
+        g_loss = self.loss_generator(gen)
+        d_loss = self.loss_discriminator(data, gen)
+        acc = self.accuracy(data, gen)
+        if self.is_plot_epoch() or force_plot:
+            self.visualize(data, gen, g_loss, d_loss, acc)
+        return g_loss, d_loss, acc
 
     @torch.no_grad()
     def visualize(self, data, gen, g_loss, d_loss, acc):
@@ -161,5 +174,5 @@ class GAN(Learner):
         except FileNotFoundError:
             print("Unable to read logged scalars. FileNotFoundError caught.")
             return None
-        fn = self.create_figure_name(prefix="progress")
+        fn = "progress.png"
         plot_gan_progress(g_loss, d_loss, acc, save_name=fn, save_dir=self.outdir)

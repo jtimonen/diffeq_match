@@ -65,6 +65,7 @@ class UnaryClassification(Learner):
         loss = binary_cross_entropy(y_pred, y_target, reduction="mean")
         return x, y_target, y_pred, loss
 
+    @torch.no_grad()
     def update_kde(self):
         data = self.whole_trainset()
         x_real, x_noisy = self.create_x(data)

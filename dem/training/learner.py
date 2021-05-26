@@ -47,6 +47,9 @@ class Learner(pl.LightningModule, abc.ABC):
         batches = [batch for batch in self.valid_loader]
         return torch.cat(batches, dim=0)
 
+    def is_plot_epoch(self):
+        return self.current_epoch % self.plot_freq == 0
+
     @property
     def involves_kde(self):
         return self.discriminator.is_kde

@@ -58,7 +58,7 @@ def create_discriminator(D: int, kde=False, fixed_kde=False, **nn_kwargs):
     if fixed_kde:
         disc = KdeDiscriminator(D=D, trainable=False)
     elif kde:
-        disc = KdeDiscriminator(D=D)
+        disc = KdeDiscriminator(D=D, trainable=True)
     else:
         disc = NeuralDiscriminator(D=D, **nn_kwargs)
     return disc

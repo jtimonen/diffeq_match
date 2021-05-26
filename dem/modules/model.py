@@ -256,10 +256,15 @@ class GenerativeModel(nn.Module):
         ode_alpha=0.2,
         sde_alpha=0.2,
         L: int = 60,
+        epoch=None,
         **kwargs
     ):
         x_all, ot, st = self.forward_numpy(N, L)
         result = Simulation(self.stages, x_all, ot, st)
+        if epoch is not None:
+            title = "epoch = %d" % epoch
+        else:
+            title = "model simulation"
         plot_simulation(
             result,
             data,
@@ -268,6 +273,7 @@ class GenerativeModel(nn.Module):
             point_alpha,
             ode_alpha,
             sde_alpha,
+            title,
             **kwargs
         )
 

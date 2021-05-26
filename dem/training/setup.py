@@ -36,10 +36,10 @@ class TrainingSetup:
     def __init__(
         self,
         dataset,
-        lr: float = 0.005,
+        lr: float = 0.002,
         n_epochs: int = 400,
         outdir="out",
-        batch_size: int = 64,
+        batch_size: int = 256,
         num_workers: int = 0,
         plot_freq: int = 0,
         lr_disc=None,

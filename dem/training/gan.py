@@ -117,9 +117,11 @@ class GAN(Learner):
 
     def on_epoch_end(self):
         g_loss, d_loss, acc = self.validate_model()
-        self.log("g_loss", g_loss.item())
-        self.log("d_loss", d_loss.item())
+        self.log("g_loss", g_loss)
+        self.log("d_loss", d_loss)
         self.log("accuracy", acc)
+        if self.involves_kde:
+            self.log("kde_bandwidth", self.discriminator.kde.bw)
 
     def on_fit_end(self) -> None:
         print("Training done.")
@@ -143,13 +145,15 @@ class GAN(Learner):
         data = tensor_to_numpy(data)
         N = data.shape[0]
         fn = self.create_figure_name(prefix="model")
-        self.model.visualize(N=N, data=data, save_name=fn, save_dir=self.outdir)
+        self.model.visualize(
+            N=N, data=data, epoch=self.current_epoch, save_name=fn, save_dir=self.outdir
+        )
         self.visualize_disc(data, gen, acc)
         if self.current_epoch > 0:
             self.visualize_training()
 
     def visualize_disc(self, data, gen, acc):
-        title = "Accuracy=%1.4f" % acc
+        title = "epoch = %d, accuracy=%1.4f" % (self.current_epoch, acc)
         x = np.vstack((gen, data))
         y_target = np.array(gen.shape[0] * [0] + data.shape[0] * [1])
         fn = self.create_figure_name(prefix="disc")
@@ -171,8 +175,12 @@ class GAN(Learner):
             g_loss = self.read_logged_scalar(name="g_loss", version=version)
             d_loss = self.read_logged_scalar(name="d_loss", version=version)
             acc = self.read_logged_scalar(name="accuracy", version=version)
+            if self.involves_kde:
+                bw = self.read_logged_scalar(name="kde_bandwidth", version=version)
+            else:
+                bw = None
         except FileNotFoundError:
             print("Unable to read logged scalars. FileNotFoundError caught.")
             return None
         fn = "progress.png"
-        plot_gan_progress(g_loss, d_loss, acc, save_name=fn, save_dir=self.outdir)
+        plot_gan_progress(g_loss, d_loss, acc, bw, save_name=fn, save_dir=self.outdir)

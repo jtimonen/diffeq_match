@@ -1,1 +1,1 @@
-convert -delay 30 -loop 0 out/figs/fig_*.png out/progress.gif
+convert -delay 30 -loop 0 out/model*.png out/model.gif

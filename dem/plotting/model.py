@@ -14,7 +14,7 @@ def determine_line_prop(sde, backwards, stage_idx):
 
 
 def plot_simulation(
-    sim, data, save_name, save_dir, point_alpha, ode_alpha, sde_alpha, **kwargs
+    sim, data, save_name, save_dir, point_alpha, ode_alpha, sde_alpha, title, **kwargs
 ):
     pltr = hdviz.create_plotter(sim.D)
     if data is not None:
@@ -34,5 +34,5 @@ def plot_simulation(
             color, style = determine_line_prop(True, rev, s)
             tlab = label + ", SDE, back=" + str(rev)
             pltr.add_lineset(st, label=tlab, color=color, alpha=sde_alpha, style=style)
-    pltr.plot()
+    pltr.plot(title=title)
     hdviz.draw_plot(save_name, save_dir, **kwargs)

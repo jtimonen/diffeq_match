@@ -53,8 +53,8 @@ class MultiLayerNet(nn.Module):
 
     def __repr__(self):
         n1, n2 = self.n_hidden, self.n_hidden_layers
-        desc = "<MultiLayerNet(n_hidden=%d, n_hidden_layers=%d" % (n1, n2)
-        desc += ", activation=" + self.act_name + ")>"
+        desc = "MultiLayerNet(n_hidden=%d, n_hidden_layers=%d" % (n1, n2)
+        desc += ", activation=" + self.act_name + ")"
         return desc
 
 

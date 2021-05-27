@@ -6,4 +6,5 @@ rm -rf .pytest_cache
 rm -rf __pycache__
 rm -rf tests/__pycache__
 rm -rf tests/out
+rm -rf out/
 

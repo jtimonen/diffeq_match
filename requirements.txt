@@ -18,3 +18,5 @@ hdviz @ git+https://github.com/jtimonen/hdviz.git
 tensorboard>=2.4.1
 setuptools>=56.0.0
 scanpy>=1.7.2
+imageio>=2.9.0
+

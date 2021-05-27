@@ -11,6 +11,4 @@ model = dem.create_model(init=z_init)
 disc = dem.create_discriminator(D=model.D, fixed_kde=True)
 
 # Training
-dem.train_model(
-    model, disc, z_data, plot_freq=3, n_epochs=300, lr=0.002, batch_size=128
-)
+dem.train_model(model, disc, z_data, plot_freq=3, n_epochs=6, lr=0.002, batch_size=128)

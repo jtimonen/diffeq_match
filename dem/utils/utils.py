@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+import imageio
+import os
+import glob
 
 
 def tensor_to_numpy(x: torch.Tensor):
@@ -15,3 +18,27 @@ def add_noise(x: torch.Tensor, sigma):
 
 def num_trainable_params(model: nn.Module):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def animate(path, prefix, ext=".png", frame_duration=0.05, outfile=None):
+    if outfile is None:
+        fn = os.path.join(path, prefix) + ".gif"
+    else:
+        fn = outfile
+    pattern = os.path.join(path, prefix + "*" + ext)
+    print("Creating " + fn + " from files that match pattern '" + pattern + "'...")
+    filenames = glob.glob(pattern)
+    n_images = len(filenames)
+    if n_images == 0:
+        print("No matches found!")
+        return None
+    print("Found %d image files, start writing..." % len(filenames))
+    with imageio.get_writer(fn, mode="I", duration=frame_duration) as writer:
+        for filename in filenames:
+            image = imageio.imread(filename)
+            writer.append_data(image)
+    print("Animation ready.")
+
+
+def viewer():
+    return None

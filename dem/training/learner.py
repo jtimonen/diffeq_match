@@ -9,7 +9,7 @@ from dem.data.dataloader import create_dataloader
 from dem.utils import read_logged_scalar, read_logged_events
 from dem.modules import GenerativeModel
 from dem.modules.discriminator import Discriminator
-from dem.utils.utils import tensor_to_numpy
+from dem.utils.utils import tensor_to_numpy, animate
 from dem.training.setup import TrainingSetup
 from dem.plotting.discriminator import plot_disc_2d
 from dem.plotting.training import plot_gan_progress
@@ -37,6 +37,11 @@ class Learner(pl.LightningModule, abc.ABC):
         self.plot_freq = setup.plot_freq
         self.outdir = setup.outdir
         self.set_outdir(setup.outdir)
+        self.animate_kwargs = dict()
+
+    @property
+    def figdir(self):
+        return os.path.join(self.outdir, "figs")
 
     @property
     def num_train(self):
@@ -74,6 +79,7 @@ class Learner(pl.LightningModule, abc.ABC):
         print("Training done.")
         if self.involves_kde:
             self.update_kde()
+        self.animate(**self.animate_kwargs)
 
     def set_outdir(self, path):
         """Set output directory."""
@@ -126,10 +132,10 @@ class AdversarialLearner(Learner):
         self.setup_desc = setup.__repr__()
 
     def __repr__(self):
-        desc = type(self).__name__
-        desc += "\n  " + self.model.__repr__()
-        desc += "\n  " + self.discriminator.__repr__()
-        desc += "\n  " + self.setup_desc
+        desc = type(self).__name__ + ":"
+        desc += "\n" + self.model.__repr__()
+        desc += "\n" + self.discriminator.__repr__()
+        desc += "\n" + self.setup_desc
         return desc
 
     def configure_optimizers(self):
@@ -183,6 +189,7 @@ class AdversarialLearner(Learner):
             self.update_kde()
         force_plot = self.plot_freq > 0
         self.validate_model(force_plot=force_plot)
+        self.animate(**self.animate_kwargs)
 
     def validate_model(self, force_plot=False):
         data = self.whole_validset()
@@ -200,7 +207,7 @@ class AdversarialLearner(Learner):
         N = data.shape[0]
         fn = self.create_figure_name(prefix="model")
         self.model.visualize(
-            N=N, data=data, epoch=self.current_epoch, save_name=fn, save_dir=self.outdir
+            N=N, data=data, epoch=self.current_epoch, save_name=fn, save_dir=self.figdir
         )
         self.visualize_disc(data, gen, acc)
         if self.current_epoch > 0:
@@ -211,14 +218,13 @@ class AdversarialLearner(Learner):
         x = np.vstack((gen, data))
         y_target = np.array(gen.shape[0] * [0] + data.shape[0] * [1])
         fn = self.create_figure_name(prefix="disc")
-        sd = self.outdir
         if self.model.D == 2:
             plot_disc_2d(
                 self.discriminator,
                 x,
                 y_target,
                 save_name=fn,
-                save_dir=sd,
+                save_dir=self.figdir,
                 title=title,
                 contour=True,
                 points=True,
@@ -238,4 +244,11 @@ class AdversarialLearner(Learner):
             print("Unable to read logged scalars. FileNotFoundError caught.")
             return None
         fn = "progress.png"
-        plot_gan_progress(g_loss, d_loss, acc, bw, save_name=fn, save_dir=self.outdir)
+        plot_gan_progress(g_loss, d_loss, acc, bw, save_name=fn, save_dir=self.figdir)
+
+    def animate(self, **kwargs):
+        path = self.figdir
+        fn1 = os.path.join(self.outdir, "model.gif")
+        fn2 = os.path.join(self.outdir, "disc.gif")
+        animate(path, "model", outfile=fn1, **kwargs)
+        animate(path, "disc", outfile=fn2, **kwargs)

@@ -8,7 +8,7 @@ from .setup import TrainingSetup, run_training
 from dem.modules.discriminator import Discriminator, KdeDiscriminator
 from dem.data.dataset import NumpyDataset
 from dem.utils.math import mvrnorm
-from dem.utils.utils import tensor_to_numpy
+from dem.utils.utils import tensor_to_numpy, animate
 from dem.utils.classification import accuracy, create_classification
 from dem.plotting import plot_disc_2d
 
@@ -97,21 +97,25 @@ class UnaryClassification(Learner):
         return torch.optim.Adam(self.discriminator.parameters(), lr=self.lr)
 
     def visualize(self, x, y_target):
-        fn = self.create_figure_name()
+        fn = self.create_figure_name(prefix="disc")
         title = self.epoch_str()
         if self.involves_kde:
             title = title + (", bw = %1.4f" % self.discriminator.kde.bw)
-        fig_dir = os.path.join(self.outdir, "figs")
         if self.discriminator.D == 2:
             plot_disc_2d(
                 self.discriminator,
                 x,
                 y_target,
                 save_name=fn,
-                save_dir=fig_dir,
+                save_dir=self.figdir,
                 title=title,
                 contour=self.plot_contour,
                 points=self.plot_points,
             )
         else:
             pass
+
+    def animate(self, **kwargs):
+        path = self.figdir
+        fn = os.path.join(self.outdir, "disc.gif")
+        animate(path, "disc", outfile=fn, **kwargs)

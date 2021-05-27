@@ -28,6 +28,7 @@ def plot_disc_2d(
     title="",
     points=True,
     contour=True,
+    gan_mode=False,
     figsize=(7.0, 5.5),
     **kwargs
 ):
@@ -47,9 +48,11 @@ def plot_disc_2d(
         cs = ax.contourf(X, Y, Z, cmap=cm, alpha=0.75, levels=levels)
         fig.colorbar(cs, ax=ax)
     pp = create_plotter(2)
+    labels = ["generated", "data"] if gan_mode else None
     pp.add_pointsets(
         x=x,
         categories=true_labels,
+        labels=labels,
         categ_prefix="class",
         colors=scatter_colors,
         alpha=scatter_alpha,

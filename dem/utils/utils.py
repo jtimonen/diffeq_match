@@ -3,6 +3,7 @@ import torch.nn as nn
 import imageio
 import os
 import glob
+import pkg_resources
 
 
 def tensor_to_numpy(x: torch.Tensor):
@@ -40,5 +41,7 @@ def animate(path, prefix, ext=".png", frame_duration=0.05, outfile=None):
     print("Animation ready.")
 
 
-def viewer():
-    return None
+def html_viewer(outfile="output.html"):
+    code = pkg_resources.resource_string(__name__, "viewer.html").decode("utf-8")
+    with open(outfile, "w") as f:
+        f.write(code)

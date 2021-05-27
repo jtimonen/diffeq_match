@@ -31,7 +31,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/jtimonen/diffeq_match",
     packages=setuptools.find_packages(),
-    package_data={pkg_name: ["data/*.html"]},
+    include_package_data=True,
     install_requires=install_requires,
     setup_requires=["pip>=19.0.3"],
     license="MIT",

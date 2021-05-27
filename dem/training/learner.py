@@ -9,7 +9,7 @@ from dem.data.dataloader import create_dataloader
 from dem.utils import read_logged_scalar, read_logged_events
 from dem.modules import GenerativeModel
 from dem.modules.discriminator import Discriminator
-from dem.utils.utils import tensor_to_numpy, animate
+from dem.utils.utils import tensor_to_numpy, animate, html_viewer
 from dem.training.setup import TrainingSetup
 from dem.plotting.discriminator import plot_disc_2d
 from dem.plotting.training import plot_gan_progress
@@ -244,11 +244,13 @@ class AdversarialLearner(Learner):
             print("Unable to read logged scalars. FileNotFoundError caught.")
             return None
         fn = "progress.png"
-        plot_gan_progress(g_loss, d_loss, acc, bw, save_name=fn, save_dir=self.figdir)
+        plot_gan_progress(g_loss, d_loss, acc, bw, save_name=fn, save_dir=self.outdir)
 
     def animate(self, **kwargs):
         path = self.figdir
         fn1 = os.path.join(self.outdir, "model.gif")
         fn2 = os.path.join(self.outdir, "disc.gif")
+        fn3 = os.path.join(self.outdir, "results.html")
         animate(path, "model", outfile=fn1, **kwargs)
         animate(path, "disc", outfile=fn2, **kwargs)
+        html_viewer(outfile=fn3)

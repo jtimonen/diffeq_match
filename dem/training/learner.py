@@ -253,4 +253,5 @@ class AdversarialLearner(Learner):
         fn3 = os.path.join(self.outdir, "results.html")
         animate(path, "model", outfile=fn1, **kwargs)
         animate(path, "disc", outfile=fn2, **kwargs)
-        html_viewer(outfile=fn3)
+        desc = self.__repr__()
+        html_viewer(outfile=fn3, description_txt=desc)

@@ -46,7 +46,8 @@ def _animate(filenames, fps, outfile):
     imageio.mimsave(outfile, images, fps=fps)
 
 
-def html_viewer(outfile="output.html"):
+def html_viewer(outfile="output.html", description_txt="No description"):
     code = pkg_resources.resource_string(__name__, "viewer.html").decode("utf-8")
+    code = code.replace("__STRING_TO_REPLACE__", description_txt)
     with open(outfile, "w") as f:
         f.write(code)

@@ -14,24 +14,56 @@
             font-family: Helvetica;
             font-color: #383838;
         }
+
+        pre code {
+          background-color: #eee;
+          border: 1px solid #999;
+          display: block;
+          padding: 2px;
+          font-family: Courier
+        }
+
+    .center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
     </style>
 </head>
 
 <body>
 
-<h1>Model description</h1>
-__STRING_TO_REPLACE__
+<hr>
+<h1>Model and setup</h1>
 
+<pre>
+  <code>__MODEL_DESCRIPTION__</code>
+</pre>
+
+<pre>
+  <code>__PKG_INFO__</code>
+</pre>
+
+<hr>
 <h1>Training results</h1>
+
 <h2> Model </h2>
 
+<div class="center">
 <img src="model.gif" alt="model animation" width="640">
+</div>
 
 <h2> Discriminator </h2>
+
+<div class="center">
 <img src="disc.gif" alt="discriminator animation" width="640">
+</div>
 
 <h2> Training progress </h2>
+
+<div class="center">
 <img src="progress.png" alt="training progress" width="900">
+</div>
 
 </body>
 </html>

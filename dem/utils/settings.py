@@ -34,14 +34,14 @@ def session_info(skip_cuda: bool = False, quiet: bool = False):
     :param quiet: should the info not be printed? if it is printed then None is
     returned
     """
-    si = session_info_(skip_cuda)
+    si = _session_info(skip_cuda)
     if not quiet:
         print(si)
         return None
     return si
 
 
-def session_info_(skip_cuda: bool = False):
+def _session_info(skip_cuda: bool = False):
     """Get version info of relevant dependencies, and set data and output paths.
     :param skip_cuda: Should CUDA information be skipped?
     :type skip_cuda: bool

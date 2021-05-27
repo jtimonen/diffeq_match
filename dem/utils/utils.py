@@ -4,6 +4,7 @@ import imageio
 import os
 import glob
 import pkg_resources
+from dem.utils.settings import session_info
 
 
 def tensor_to_numpy(x: torch.Tensor):
@@ -47,7 +48,9 @@ def _animate(filenames, fps, outfile):
 
 
 def html_viewer(outfile="output.html", description_txt="No description"):
+    info_txt = session_info(skip_cuda=False, quiet=True)
     code = pkg_resources.resource_string(__name__, "viewer.html").decode("utf-8")
-    code = code.replace("__STRING_TO_REPLACE__", description_txt)
+    code = code.replace("__MODEL_DESCRIPTION__", description_txt)
+    code = code.replace("__PKG_INFO__", info_txt)
     with open(outfile, "w") as f:
         f.write(code)

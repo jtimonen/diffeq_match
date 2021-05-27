@@ -83,7 +83,7 @@ class DynamicModel(nn.Module):
         return desc
 
     def __repr__(self):
-        return "<" + self.description() + ">"
+        return self.description()
 
     def _traj_forward(self, y_init: torch.Tensor, ts, sde: bool, **kwargs):
         if sde:

@@ -21,7 +21,7 @@ def num_trainable_params(model: nn.Module):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def animate(path, prefix, ext=".png", frame_duration=0.05, outfile=None):
+def animate(path, prefix, ext=".png", frame_duration=0.1, outfile=None):
     if outfile is None:
         fn = os.path.join(path, prefix) + ".gif"
     else:
@@ -34,11 +34,16 @@ def animate(path, prefix, ext=".png", frame_duration=0.05, outfile=None):
         print("No matches found!")
         return None
     print("Found %d image files, start writing..." % len(filenames))
-    with imageio.get_writer(fn, mode="I", duration=frame_duration) as writer:
-        for filename in filenames:
-            image = imageio.imread(filename)
-            writer.append_data(image)
-    print("Animation ready.")
+    fps = 1.0 / frame_duration
+    _animate(filenames, fps, fn)
+    print("Animation ready  (%1.3f fps)." % fps)
+
+
+def _animate(filenames, fps, outfile):
+    images = []
+    for file_name in sorted(filenames):
+        images.append(imageio.imread(file_name))
+    imageio.mimsave(outfile, images, fps=fps)
 
 
 def html_viewer(outfile="output.html"):

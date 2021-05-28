@@ -8,7 +8,7 @@ z_init = z_data[0:30, :]
 
 # Create model and discriminator
 model = dem.create_model(init=z_init)
-disc = dem.create_discriminator(D=model.D) # fixed_kde=True, kde=True
+disc = dem.create_discriminator(D=model.D)  # fixed_kde=True, kde=True
 
 # Training
 dem.train_model(

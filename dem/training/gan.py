@@ -49,9 +49,13 @@ class GAN(AdversarialLearner):
 
     def configure_optimizers(self):
         pars_g = self.model.parameters()
-        opt_g = Adam(pars_g, lr=self.lr, betas=self.betas)
+        opt_g = Adam(
+            pars_g, lr=self.lr, betas=self.betas, weight_decay=self.weight_decay
+        )
         pars_d = self.discriminator.parameters()
-        opt_d = Adam(pars_d, lr=self.lr_disc, betas=self.betas)
+        opt_d = Adam(
+            pars_d, lr=self.lr_disc, betas=self.betas, weight_decay=self.weight_decay
+        )
         return [opt_g, opt_d], []
 
     def training_step(self, data_batch, batch_idx, optimizer_idx):
@@ -83,7 +87,9 @@ class GANFixedDiscriminator(AdversarialLearner):
 
     def configure_optimizers(self):
         pars_g = self.model.parameters()
-        return Adam(pars_g, lr=self.lr, betas=self.betas)
+        return Adam(
+            pars_g, lr=self.lr, betas=self.betas, weight_decay=self.weight_decay
+        )
 
     def training_step(self, data_batch, batch_idx):
         """Perform a training step."""

@@ -38,6 +38,17 @@ class Learner(pl.LightningModule, abc.ABC):
         self.outdir = setup.outdir
         self.set_outdir(setup.outdir)
         self.animate_kwargs = dict()
+        self.version = 0
+        self.lr = setup.lr
+        self.lr_disc = setup.lr_disc
+        self.n_epochs = setup.n_epochs
+        self.betas = (setup.b1, setup.b2)
+        self.setup_desc = setup.__repr__()
+        self.weight_decay = setup.weight_decay
+
+    def set_version(self, ver: int):
+        print("Experiment version = %d" % ver)
+        self.version = ver
 
     @property
     def figdir(self):
@@ -104,13 +115,15 @@ class Learner(pl.LightningModule, abc.ABC):
         fn = prefix + self.epoch_str() + ext
         return fn
 
-    def read_logged_scalar(self, name="valid_loss", version: int = 0):
+    def read_logged_scalar(self, name="valid_loss"):
         """Read a logged scalar."""
+        version = self.version
         df = read_logged_scalar(name=name, parent_dir=self.outdir, version=version)
         return df
 
-    def read_logged_events(self, version: int = 0):
+    def read_logged_events(self):
         """Read the event accumulator."""
+        version = self.version
         ea = read_logged_events(parent_dir=self.outdir, version=version)
         return ea
 
@@ -125,11 +138,6 @@ class AdversarialLearner(Learner):
         super().__init__(setup)
         self.model = model
         self.discriminator = discriminator
-        self.lr = setup.lr
-        self.lr_disc = setup.lr_disc
-        self.n_epochs = setup.n_epochs
-        self.betas = (setup.b1, setup.b2)
-        self.setup_desc = setup.__repr__()
 
     def __repr__(self):
         desc = type(self).__name__ + ":"
@@ -231,13 +239,13 @@ class AdversarialLearner(Learner):
                 gan_mode=True,
             )
 
-    def visualize_training(self, version: int = 0):
+    def visualize_training(self):
         try:
-            g_loss = self.read_logged_scalar(name="g_loss", version=version)
-            d_loss = self.read_logged_scalar(name="d_loss", version=version)
-            acc = self.read_logged_scalar(name="accuracy", version=version)
+            g_loss = self.read_logged_scalar(name="g_loss")
+            d_loss = self.read_logged_scalar(name="d_loss")
+            acc = self.read_logged_scalar(name="accuracy")
             if self.involves_kde:
-                bw = self.read_logged_scalar(name="kde_bandwidth", version=version)
+                bw = self.read_logged_scalar(name="kde_bandwidth")
             else:
                 bw = None
         except FileNotFoundError:

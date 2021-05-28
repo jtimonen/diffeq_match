@@ -5,6 +5,8 @@ import warnings
 
 def run_training(module: LightningModule, n_epochs: int, outdir):
     trainer = Trainer(max_epochs=n_epochs, min_epochs=n_epochs, default_root_dir=outdir)
+    ver = trainer.logger.version
+    module.set_version(ver)
     with warnings.catch_warnings():
         warnings.filterwarnings(
             action="ignore", category=UserWarning, message="The dataloader,"
@@ -45,8 +47,9 @@ class TrainingSetup:
         lr_disc=None,
         p_valid=None,
         pin_memory=False,
-        b1: float = 0.5,
+        b1: float = 0.9,
         b2: float = 0.999,
+        weight_decay: float = 1e-4,
     ):
         if lr_disc is None:
             lr_disc = lr
@@ -69,11 +72,17 @@ class TrainingSetup:
         self.pin_memory = pin_memory
         self.b1 = b1
         self.b2 = b2
+        self.weight_decay = weight_decay
 
     def __repr__(self):
-        desc = "* TrainingSetup: lr=%1.4f, n_epochs=%d, batch_size=%d" % (
-            self.lr,
-            self.n_epochs,
-            self.batch_size,
+        desc = (
+            "* TrainingSetup: lr=%s, n_epochs=%d, batch_size=%d,"
+            "weight_decay = %s"
+            % (
+                "{:.2e}".format(self.lr),
+                self.n_epochs,
+                self.batch_size,
+                "{:.2e}".format(self.weight_decay),
+            )
         )
         return desc

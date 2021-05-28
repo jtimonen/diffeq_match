@@ -94,7 +94,12 @@ class UnaryClassification(Learner):
             self.log("bandwidth", self.discriminator.kde.bw)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.discriminator.parameters(), lr=self.lr)
+        return torch.optim.Adam(
+            self.discriminator.parameters(),
+            lr=self.lr,
+            betas=self.betas,
+            weight_decay=self.weight_decay,
+        )
 
     def visualize(self, x, y_target):
         fn = self.create_figure_name(prefix="disc")

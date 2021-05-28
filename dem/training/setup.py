@@ -38,7 +38,7 @@ class TrainingSetup:
     def __init__(
         self,
         dataset,
-        lr: float = 0.002,
+        lr: float = 0.001,
         n_epochs: int = 400,
         outdir="out",
         batch_size: int = 256,
@@ -49,7 +49,7 @@ class TrainingSetup:
         pin_memory=False,
         b1: float = 0.9,
         b2: float = 0.999,
-        weight_decay: float = 1e-4,
+        weight_decay: float = 1e-5,
     ):
         if lr_disc is None:
             lr_disc = lr
@@ -75,14 +75,10 @@ class TrainingSetup:
         self.weight_decay = weight_decay
 
     def __repr__(self):
-        desc = (
-            "* TrainingSetup: lr=%s, n_epochs=%d, batch_size=%d,"
-            "weight_decay = %s"
-            % (
-                "{:.2e}".format(self.lr),
-                self.n_epochs,
-                self.batch_size,
-                "{:.2e}".format(self.weight_decay),
-            )
+        desc = "* TrainingSetup: lr=%s, n_epochs=%d, batch_size=%d, weight_decay=%s" % (
+            "{:.2e}".format(self.lr),
+            self.n_epochs,
+            self.batch_size,
+            "{:.2e}".format(self.weight_decay),
         )
         return desc

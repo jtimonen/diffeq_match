@@ -51,6 +51,14 @@ class TrainingSetup:
         if lr_disc is None:
             lr_disc = lr
         self.train_dataset, self.valid_dataset = create_split(dataset, p_valid)
+        L = len(self.train_dataset)
+        if batch_size > L:
+            msg = (
+                "Setting batch_size to training data set size (%d), "
+                "because specified value (%d) was larger" % (L, batch_size)
+            )
+            batch_size = L
+            print(msg)
         self.n_epochs = n_epochs
         self.lr = lr
         self.lr_disc = lr_disc
@@ -63,5 +71,9 @@ class TrainingSetup:
         self.b2 = b2
 
     def __repr__(self):
-        desc = "* TrainingSetup: lr=%1.4f, n_epochs=%d" % (self.lr, self.n_epochs)
+        desc = "* TrainingSetup: lr=%1.4f, n_epochs=%d, batch_size=%d" % (
+            self.lr,
+            self.n_epochs,
+            self.batch_size,
+        )
         return desc

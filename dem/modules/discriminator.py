@@ -10,9 +10,18 @@ from dem.modules.kde import KDE, ParamKDE
 class Discriminator(nn.Module, abc.ABC):
     """Abstract binary classifier class."""
 
-    def __init__(self, D: int):
+    def __init__(self, D: int, critic: bool = False):
         super().__init__()
         self.D = D
+        self.critic = critic
+
+    @property
+    def is_critic(self):
+        return self.critic
+
+    @property
+    def is_kde(self):
+        return isinstance(self, KdeDiscriminator)
 
     def forward_numpy(self, x: np.ndarray):
         x = torch.from_numpy(x).float()
@@ -25,16 +34,19 @@ class Discriminator(nn.Module, abc.ABC):
         labels = (val > 0.5).astype(float)
         return labels.ravel(), val.ravel()
 
-    @property
-    def is_kde(self):
-        return isinstance(self, KdeDiscriminator)
-
 
 class NeuralDiscriminator(Discriminator):
     """Binary classifier using a neural network."""
 
-    def __init__(self, D: int, n_hidden: int = 48, n_hidden_layers=2, activation=None):
-        super().__init__(D)
+    def __init__(
+        self,
+        D: int,
+        n_hidden: int = 48,
+        n_hidden_layers=2,
+        activation=None,
+        critic: bool = False,
+    ):
+        super().__init__(D, critic)
         if activation is None:
             activation = nn.LeakyReLU(0.2, inplace=True)
         self.net = MultiLayerNet(
@@ -46,11 +58,15 @@ class NeuralDiscriminator(Discriminator):
         )
 
     def forward(self, x: torch.Tensor):
-        return torch.sigmoid(self.net(x))
+        y = self.net(x)
+        if not self.is_critic:
+            y = torch.sigmoid(y)
+        return y
 
     def __repr__(self):
+        str1 = str(self.is_critic)
         str0 = self.net.__repr__()
-        return "* NeuralDiscriminator with " + str0
+        return "* NeuralDiscriminator(is_critic=%s) with %s" % (str1, str0)
 
 
 class KdeDiscriminator(Discriminator):

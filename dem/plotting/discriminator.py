@@ -33,6 +33,12 @@ def plot_disc_2d(
     **kwargs
 ):
     """Visualize discriminator output."""
+    if disc.is_critic:
+        bar_label = "Critic output"
+        if not prob:
+            raise RuntimeError("prob should be true when plotting critic!")
+    else:
+        bar_label = "Discriminator output"
     if cm is None:
         cm = plt.cm.RdBu
     X, Y, Z, Z_label = classify_at_2d_grid_around(disc, x, grid_size)
@@ -44,9 +50,13 @@ def plot_disc_2d(
     if scatter_colors is None:
         scatter_colors = ["#FF0000", "#0000FF"]
     if contour:
-        levels = [h * 0.05 for h in range(0, 21)]
+        if disc.is_critic:
+            levels = None
+        else:
+            levels = [h * 0.05 for h in range(0, 21)]
         cs = ax.contourf(X, Y, Z, cmap=cm, alpha=0.75, levels=levels)
-        fig.colorbar(cs, ax=ax)
+        cbar = fig.colorbar(cs, ax=ax)
+        cbar.set_label(bar_label, rotation=270)
     pp = create_plotter(2)
     labels = ["generated", "data"] if gan_mode else None
     pp.add_pointsets(

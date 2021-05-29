@@ -53,12 +53,14 @@ def create_model(init: np.ndarray, stages=None, net_f=None, **net_f_kwargs):
     return GenerativeModel(dynamics=dyn, prior_info=prior_info, stages=stages)
 
 
-def create_discriminator(D: int, kde=False, fixed_kde=False, **nn_kwargs):
+def create_discriminator(
+    D: int, kde=False, fixed_kde=False, critic: bool = False, **nn_kwargs
+):
     """Construct a discriminator with some default settings."""
     if fixed_kde:
         disc = KdeDiscriminator(D=D, trainable=False)
     elif kde:
         disc = KdeDiscriminator(D=D, trainable=True)
     else:
-        disc = NeuralDiscriminator(D=D, **nn_kwargs)
+        disc = NeuralDiscriminator(D=D, critic=critic, **nn_kwargs)
     return disc

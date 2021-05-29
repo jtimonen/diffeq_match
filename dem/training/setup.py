@@ -47,9 +47,9 @@ class TrainingSetup:
         lr_disc=None,
         p_valid=None,
         pin_memory=False,
-        b1: float = 0.9,
+        b1: float = 0.5,
         b2: float = 0.999,
-        weight_decay: float = 1e-5,
+        weight_decay: float = 1e-6,
     ):
         if lr_disc is None:
             lr_disc = lr

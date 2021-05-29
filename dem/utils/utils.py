@@ -22,7 +22,7 @@ def num_trainable_params(model: nn.Module):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def animate(path, prefix, ext=".png", frame_duration=0.1, outfile=None):
+def animate(path, prefix, ext=".png", frame_duration=0.15, outfile=None):
     if outfile is None:
         fn = os.path.join(path, prefix) + ".gif"
     else:
@@ -37,7 +37,7 @@ def animate(path, prefix, ext=".png", frame_duration=0.1, outfile=None):
     print("Found %d image files, start writing..." % len(filenames))
     fps = 1.0 / frame_duration
     _animate(filenames, fps, fn)
-    print("Animation ready  (%1.3f fps)." % fps)
+    print("Animation ready  (%1.1f fps)." % fps)
 
 
 def _animate(filenames, fps, outfile):

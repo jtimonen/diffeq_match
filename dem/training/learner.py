@@ -146,6 +146,10 @@ class AdversarialLearner(Learner):
         desc += "\n" + self.setup_desc
         return desc
 
+    @property
+    def is_wgan(self):
+        return self.discriminator.is_critic
+
     def configure_optimizers(self):
         raise NotImplementedError
 
@@ -156,18 +160,29 @@ class AdversarialLearner(Learner):
         of the dynamics of `G` and `D` but provides much stronger gradients early in
         learning. (Goodfellow et al., 2014)
         """
-        target_fool = torch.ones(gen_batch.size(0), 1).type_as(gen_batch)
-        return binary_cross_entropy(self.discriminator(gen_batch), target_fool)
+        d_gen = self.discriminator(gen_batch)
+        if self.is_wgan:
+            loss = -torch.mean(d_gen)
+        else:
+            target_fool = torch.ones(gen_batch.size(0), 1).type_as(gen_batch)
+            loss = binary_cross_entropy(d_gen, target_fool)
+        return loss
 
     def loss_discriminator(self, data_batch, gen_batch):
-        """Discriminator loss."""
-        target_data = torch.ones(data_batch.size(0), 1).type_as(data_batch)
-        target_gen = torch.zeros(gen_batch.size(0), 1).type_as(gen_batch)
+        """Discriminator or critic loss."""
         d_data = self.discriminator(data_batch)
-        loss_data = binary_cross_entropy(d_data, target_data)
         d_gen = self.discriminator(gen_batch.detach())
-        loss_gen = binary_cross_entropy(d_gen, target_gen)
-        return 0.5 * (loss_data + loss_gen)
+        if self.is_wgan:
+            loss = torch.mean(d_gen) - torch.mean(d_data)
+            for p in self.discriminator.parameters():
+                p.data.clamp_(-self.clip_value, self.clip_value)
+        else:
+            target_data = torch.ones(data_batch.size(0), 1).type_as(data_batch)
+            target_gen = torch.zeros(gen_batch.size(0), 1).type_as(gen_batch)
+            loss_data = binary_cross_entropy(d_data, target_data)
+            loss_gen = binary_cross_entropy(d_gen, target_gen)
+            loss = 0.5 * (loss_data + loss_gen)
+        return loss
 
     def accuracy(self, data_batch, gen_batch):
         d_data = self.discriminator(data_batch)

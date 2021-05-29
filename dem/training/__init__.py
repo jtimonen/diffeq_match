@@ -1,8 +1,7 @@
 from .discriminator import train_occ
-from .gan import train_model, GAN
-
+from .functional import train_model
 
 # Exports
 functions = ["train_occ", "train_model"]
-classes = ["GAN"]
+classes = []
 __all__ = functions + classes

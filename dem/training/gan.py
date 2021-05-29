@@ -1,3 +1,4 @@
+from torch.optim.rmsprop import RMSprop
 from torch.optim.adam import Adam
 
 from dem.modules import GenerativeModel
@@ -5,6 +6,14 @@ from dem.modules.discriminator import Discriminator
 from dem.utils.utils import num_trainable_params
 from .setup import TrainingSetup
 from .learner import AdversarialLearner
+
+
+def create_optim(params, lr, weight_decay, betas, adam):
+    if not adam:
+        opt = RMSprop(params, lr=lr, weight_decay=weight_decay)
+    else:
+        opt = Adam(params, lr=lr, weight_decay=weight_decay, betas=betas)
+    return opt
 
 
 class GAN(AdversarialLearner):
@@ -15,15 +24,24 @@ class GAN(AdversarialLearner):
         setup: TrainingSetup,
     ):
         super().__init__(model, discriminator, setup)
+        self.adam = True
 
     def configure_optimizers(self):
         pars_g = self.model.parameters()
-        opt_g = Adam(
-            pars_g, lr=self.lr, betas=self.betas, weight_decay=self.weight_decay
-        )
         pars_d = self.discriminator.parameters()
-        opt_d = Adam(
-            pars_d, lr=self.lr_disc, betas=self.betas, weight_decay=self.weight_decay
+        opt_g = create_optim(
+            pars_g,
+            lr=self.lr,
+            betas=self.betas,
+            weight_decay=self.weight_decay,
+            adam=self.adam,
+        )
+        opt_d = create_optim(
+            pars_d,
+            lr=self.lr_disc,
+            betas=self.betas,
+            weight_decay=self.weight_decay,
+            adam=self.adam,
         )
         return [opt_g, opt_d], []
 
@@ -75,18 +93,30 @@ class WGAN(AdversarialLearner):
         setup: TrainingSetup,
     ):
         super().__init__(model, critic, setup)
-        self.clip_value = 0.01
+        self.clip_value = 0.3
         self.n_critic = 5
+        self.adam = False  # use RMSProp instead
+        print("WGAN clip_value=%1.5f" % self.clip_value)
 
     def configure_optimizers(self):
         pars_g = self.model.parameters()
-        opt_g = Adam(
-            pars_g, lr=self.lr, betas=self.betas, weight_decay=self.weight_decay
-        )
         pars_d = self.discriminator.parameters()
-        opt_d = Adam(
-            pars_d, lr=self.lr_disc, betas=self.betas, weight_decay=self.weight_decay
+        opt_g = create_optim(
+            pars_g,
+            lr=self.lr,
+            betas=self.betas,
+            weight_decay=self.weight_decay,
+            adam=self.adam,
         )
+        opt_d = create_optim(
+            pars_d,
+            lr=self.lr_disc,
+            betas=self.betas,
+            weight_decay=self.weight_decay,
+            adam=self.adam,
+        )
+        print(opt_d)
+        print(opt_g)
         return (
             {"optimizer": opt_g, "frequency": 1},
             {"optimizer": opt_d, "frequency": self.n_critic},
@@ -96,11 +126,9 @@ class WGAN(AdversarialLearner):
         """Perform a training step."""
         N = data_batch.shape[0]
         if optimizer_idx == 0:
-            print("Generator step")
             gen_batch = self.model(N=N, like=data_batch)
             loss = self.loss_generator(gen_batch)
         elif optimizer_idx == 1:
-            print("Critic step")
             gen_batch = self.model(N=N, like=data_batch)
             loss = self.loss_discriminator(data_batch, gen_batch)
         else:

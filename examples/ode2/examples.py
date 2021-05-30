@@ -10,7 +10,7 @@ def run_experiment(
     N=3000,
     n_epochs=1800,
     lr=0.00025,
-    batch_size=1000,
+    batch_size=256,
     wgan=False,
     kde=False,
     fixed_kde=False,
@@ -45,10 +45,13 @@ def run_experiment(
     outdir = "%s_%d" % (prefix, idx)
     print(" ===== THIS IS EXPERIMENT NAMED <" + outdir + "> ===== ")
     dem.plot_sim(z_data, t_data, save_name=fn)
-    z_init = z_data[0:100, :]
+    z_init = z_data[(N-100):N, :]
 
     # Create model and discriminator
-    model = dem.create_model(init=z_init)
+    s1 = dem.Stage(backwards=True)
+    s2 = dem.Stage(sigma=0.05)
+    stages = [s1, s2]
+    model = dem.create_model(init=z_init, stages=stages)
     disc = dem.create_discriminator(
         D=model.D, critic=wgan, kde=kde, fixed_kde=fixed_kde
     )

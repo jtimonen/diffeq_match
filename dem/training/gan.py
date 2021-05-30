@@ -93,8 +93,8 @@ class WGAN(AdversarialLearner):
         setup: TrainingSetup,
     ):
         super().__init__(model, critic, setup)
-        self.clip_value = 0.3
-        self.n_critic = 5
+        self.clip_value = 0.01
+        self.n_critic = 10
         self.adam = False  # use RMSProp instead
         print("WGAN clip_value=%1.5f" % self.clip_value)
 

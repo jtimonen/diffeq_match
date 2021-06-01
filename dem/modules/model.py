@@ -164,6 +164,7 @@ class GenerativeModel(nn.Module):
         if solver_kwargs is None:
             solver_kwargs = dict()
         self.solver_kwargs = solver_kwargs
+        self.scatter_kwargs = dict(s=2)
 
     @property
     def num_stages(self):
@@ -252,10 +253,10 @@ class GenerativeModel(nn.Module):
         data=None,
         save_name=None,
         save_dir=None,
-        point_alpha=0.7,
-        ode_alpha=0.2,
-        sde_alpha=0.2,
-        L: int = 60,
+        point_alpha=0.2,
+        ode_alpha=0.01,
+        sde_alpha=0.01,
+        L: int = 30,
         epoch=None,
         **kwargs
     ):
@@ -274,7 +275,7 @@ class GenerativeModel(nn.Module):
             ode_alpha,
             sde_alpha,
             title,
-            **kwargs
+            scatter_kwargs=self.scatter_kwargs,
         )
 
 

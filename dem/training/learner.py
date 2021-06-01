@@ -80,16 +80,16 @@ class Learner(pl.LightningModule, abc.ABC):
     def on_fit_start(self) -> None:
         print("Training started.")
         if self.involves_kde:
-            self.update_kde()
+            self.update_kde_whole()
 
     def on_epoch_start(self) -> None:
         if self.involves_kde:
-            self.update_kde()
+            self.update_kde_whole()
 
     def on_fit_end(self) -> None:
         print("Training done.")
         if self.involves_kde:
-            self.update_kde()
+            self.update_kde_whole()
         self.animate(**self.animate_kwargs)
 
     def set_outdir(self, path):
@@ -193,7 +193,7 @@ class AdversarialLearner(Learner):
         return n_correct / (len(d_data) + len(d_gen))
 
     @torch.no_grad()
-    def update_kde(self):
+    def update_kde_whole(self):
         data = self.whole_trainset()
         gen = self.model(N=data.shape[0], like=data)
         self.discriminator.update(x0=gen, x1=data)
@@ -209,7 +209,7 @@ class AdversarialLearner(Learner):
     def on_fit_end(self) -> None:
         print("Training done.")
         if self.involves_kde:
-            self.update_kde()
+            self.update_kde_whole()
         force_plot = self.plot_freq > 0
         self.validate_model(force_plot=force_plot)
         self.animate(**self.animate_kwargs)

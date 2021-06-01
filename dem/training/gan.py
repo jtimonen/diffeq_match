@@ -82,6 +82,7 @@ class GANFixedDiscriminator(AdversarialLearner):
         """Perform a training step."""
         N = data_batch.shape[0]
         gen_batch = self.model(N=N, like=data_batch)
+        self.discriminator.update(x0=gen_batch, x1=data_batch)
         return self.loss_generator(gen_batch)
 
 

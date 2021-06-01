@@ -45,7 +45,7 @@ def run_experiment(
     outdir = "%s_%d" % (prefix, idx)
     print(" ===== THIS IS EXPERIMENT NAMED <" + outdir + "> ===== ")
     dem.plot_sim(z_data, t_data, save_name=fn)
-    z_init = z_data[(N-100):N, :]
+    z_init = z_data[(N - 100) : N, :]
 
     # Create model and discriminator
     s1 = dem.Stage(backwards=True)

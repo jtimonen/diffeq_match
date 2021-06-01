@@ -61,10 +61,10 @@ def plot_disc_2d(
     labels = ["generated", "data"] if gan_mode else None
     pp.add_pointsets(
         x=x,
-        categories=true_labels,
-        labels=labels,
-        categ_prefix="class",
-        colors=scatter_colors,
+        labels=true_labels,
+        label_names=labels,
+        label_name_prefix="class",
+        label_colors=scatter_colors,
         alpha=scatter_alpha,
     )
     pp.scatter_kwargs = scatter_kwargs

@@ -1,3 +1,3 @@
 # diffeq_match
 
-Inferring a differential equation generative process for a data set.
+Python package for inferring a differential equation generative process for a high-dimensional data set.
